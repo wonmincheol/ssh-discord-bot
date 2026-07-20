@@ -2,7 +2,7 @@
 # Discord
 # =========================
 
-DISCORD_TOKEN = "MTUyODY2MjE3MjY1NjIwNTk1NA.GHIuXZ.MlDYCQStfrVOmF92GtL968Qtt7qvfewVRKjZOA"
+DISCORD_TOKEN = "DISCORD_TOKEN"
 
 # =========================
 # Palworld REST API
@@ -10,7 +10,7 @@ DISCORD_TOKEN = "MTUyODY2MjE3MjY1NjIwNTk1NA.GHIuXZ.MlDYCQStfrVOmF92GtL968Qtt7qvf
 
 PALWORLD_API_URL = "http://127.0.0.1:8212"
 PALWORLD_API_USER = "admin"
-PALWORLD_API_PASSWORD = "@!#min3420"
+PALWORLD_API_PASSWORD = "PALWORLD_API_PASSWORD"
 
 # =========================
 # Server Control Scripts
