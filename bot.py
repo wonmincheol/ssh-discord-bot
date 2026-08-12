@@ -105,7 +105,7 @@ async def start(interaction: discord.Interaction):
             process = subprocess.Popen(
                 [
                     sys.executable,
-                    "/data/discord-bot/auto_shutdown.py"
+                    "/data/ssh-discord-bot/auto_shutdown.py"
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
