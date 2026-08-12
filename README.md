@@ -435,7 +435,7 @@ python bot.py
 ```text
 !status
 
-✅ Palworld 서버가 실행 중입니다.
+🟢 Palworld server is running
 ```
 
 ```text

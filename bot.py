@@ -9,7 +9,6 @@ from config import START_SCRIPT
 from config import STOP_SCRIPT
 
 
-
 server_sessions = {}
 
 intents = discord.Intents.default()
@@ -17,15 +16,17 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+
 @bot.event
 async def on_ready():
     print(f"{bot.user} Login sucess!")
     bot.loop.create_task(
-        
         monitor_auto_shutdown()
     )
 
+
 import asyncio
+
 
 async def monitor_auto_shutdown():
     # print("monitor start")
@@ -45,9 +46,10 @@ async def monitor_auto_shutdown():
                         "🛑 The server shut down automatically because there was no player for an hour."
                     )
 
-                del server_sessions[guild_id]
+                    del server_sessions[guild_id]
 
         await asyncio.sleep(3)
+
 
 @bot.command()
 async def ping(ctx):
@@ -63,7 +65,6 @@ async def who(ctx):
     )
 
     await ctx.send(f"Current Bot Run Account : `{result.stdout.strip()}`")
-
 
 
 @bot.command()
@@ -90,6 +91,7 @@ async def status(ctx):
 @bot.command()
 async def start(ctx):
     guild_id = ctx.guild.id
+
     result = subprocess.run(
         ["sudo", START_SCRIPT],
         capture_output=True,
@@ -125,7 +127,9 @@ async def start(ctx):
         await ctx.send("🟡 Server is already running")
 
     else:
-        await ctx.send(f"❌ Failed to start the server\n```{result.stderr}```")
+        await ctx.send(
+            f"❌ Failed to start the server\n```{result.stderr}```"
+        )
 
 
 @bot.command()
@@ -148,7 +152,6 @@ async def stop(ctx):
         capture_output=True,
         text=True
     )
-    
 
     status = result.stdout.strip()
 
@@ -162,7 +165,10 @@ async def stop(ctx):
         await ctx.send("❌ Failed to shut down the server")
 
     else:
-        await ctx.send(f"⚠️ Unknown error\n```{result.stderr}```")
+        await ctx.send(
+            f"⚠️ Unknown error\n```{result.stderr}```"
+        )
+
 
 @bot.command()
 async def players(ctx):
@@ -190,5 +196,30 @@ async def players(ctx):
             "❌ Failed to get player list\n"
             f"```{e}```"
         )
+
+
+@bot.command()
+async def desktop_on(ctx):
+    """데스크탑 Wake on LAN"""
+
+    try:
+        result = subprocess.run(
+            [
+                "wakeonlan",
+                "-i",
+                "172.30.1.255",
+                "10:FF:E0:C0:F2:06"
+            ],
+            capture_output=True,
+            text=True
+        )
+
+        await ctx.send(
+            f"📡 Wake on LAN 패킷을 전송했습니다.\n```{result.stdout}```"
+        )
+
+    except Exception as e:
+        await ctx.send(f"❌ 오류 발생\n```{e}```")
+
 
 bot.run(DISCORD_TOKEN)
