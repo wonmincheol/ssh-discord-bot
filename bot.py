@@ -16,7 +16,7 @@ server_sessions = {}
 
 bot = commands.Bot(
     command_prefix="!", 
-    intents=discord.intents.default()
+    intents=discord.Intents.default()
 )
 
 
