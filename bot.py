@@ -39,7 +39,7 @@ async def monitor_auto_shutdown():
 
                 if "AUTO_SHUTDOWN" in output:
 
-                    await session["ctx"].send(
+                    await session["interaction"].send(
                         "🛑 The server shut down automatically because there was no player for an hour."
                     )
 
@@ -173,7 +173,7 @@ async def players(interaction: discord.Interaction):
 
         # 접속자가 없는 경우
         if len(players) == 0:
-            await ctx.send(
+            await interaction.response.send_message(
                 "👥 **Active Player (0 person)**\n\n"
                 "No active players are currently active"
             )
