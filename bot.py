@@ -4,7 +4,7 @@ import sys
 import asyncio
 from palworld_api import get_players
 from discord.ext import commands
-from discord improt app_commands
+from discord import app_commands
 from config import DISCORD_TOKEN
 from config import STATUS_SCRIPT
 from config import START_SCRIPT
