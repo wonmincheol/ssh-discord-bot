@@ -16,7 +16,7 @@ PALWORLD_API_PASSWORD = "PALWORLD_API_PASSWORD"
 # Server Control Scripts
 # =========================
 
-SCRIPT_PATH = "/data/discord-bot/server-control"
+SCRIPT_PATH = "/data/ssh-discord-bot/server-control"
 
 START_SCRIPT = f"{SCRIPT_PATH}/start-palworld.sh"
 STOP_SCRIPT = f"{SCRIPT_PATH}/stop-palworld.sh"

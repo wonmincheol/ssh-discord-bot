@@ -1,8 +1,10 @@
 import discord
 import subprocess
 import sys
+import asyncio
 from palworld_api import get_players
 from discord.ext import commands
+from discord import app_commands
 from config import DISCORD_TOKEN
 from config import STATUS_SCRIPT
 from config import START_SCRIPT
@@ -11,21 +13,16 @@ from config import STOP_SCRIPT
 
 server_sessions = {}
 
-intents = discord.Intents.default()
-intents.message_content = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
-
-
-@bot.event
-async def on_ready():
-    print(f"{bot.user} Login sucess!")
-    bot.loop.create_task(
-        monitor_auto_shutdown()
-    )
+bot = commands.Bot(
+    command_prefix="!", 
+    intents=discord.Intents.default()
+)
 
 
-import asyncio
+
+
+
 
 
 async def monitor_auto_shutdown():
@@ -42,7 +39,7 @@ async def monitor_auto_shutdown():
 
                 if "AUTO_SHUTDOWN" in output:
 
-                    await session["ctx"].send(
+                    await session["interaction"].send(
                         "🛑 The server shut down automatically because there was no player for an hour."
                     )
 
@@ -50,25 +47,24 @@ async def monitor_auto_shutdown():
 
         await asyncio.sleep(3)
 
+@bot.tree.command(name="ping", description="봇의 응답 상태를 확인합니다.")
+async def ping(interaction: discord.Interaction):
+    await interaction.response.send_message("Pong!")
 
-@bot.command()
-async def ping(ctx):
-    await ctx.send("Pong!")
 
-
-@bot.command()
-async def who(ctx):
+@bot.tree.command(name="who", description="봇이 사용중인 계정을 확인합니다.")
+async def who(interaction: discord.Interaction):
     result = subprocess.run(
         ["whoami"],
         capture_output=True,
         text=True
     )
 
-    await ctx.send(f"Current Bot Run Account : `{result.stdout.strip()}`")
+    await interaction.response.send_message(f"Current Bot Run Account : `{result.stdout.strip()}`")
 
 
-@bot.command()
-async def status(ctx):
+@bot.tree.command(name="status", description="팰월드 서버 상태를 확인합니다.")
+async def status(interaction: discord.Interaction):
 
     result = subprocess.run(
         ["sudo", STATUS_SCRIPT],
@@ -79,18 +75,18 @@ async def status(ctx):
     status = result.stdout.strip()
 
     if status == "RUNNING":
-        await ctx.send("🟢 Palworld server is running")
+        await interaction.response.send_message("🟢 Palworld server is running")
 
     elif status == "STOPPED":
-        await ctx.send("🔴 Palworld server is shutdown")
+        await interaction.response.send_message("🔴 Palworld server is shutdown")
 
     else:
-        await ctx.send(f"⚠️ Status check failed\n```{result.stderr}```")
+        await interaction.response.send_message(f"⚠️ Status check failed\n```{result.stderr}```")
 
 
-@bot.command()
-async def start(ctx):
-    guild_id = ctx.guild.id
+@bot.tree.command(name="start", description="팰월드 서버를 실행합니다.")
+async def start(interaction: discord.Interaction):
+    guild_id = interaction.guild.id
 
     result = subprocess.run(
         ["sudo", START_SCRIPT],
@@ -109,7 +105,7 @@ async def start(ctx):
             process = subprocess.Popen(
                 [
                     sys.executable,
-                    "/data/discord-bot/auto_shutdown.py"
+                    "/data/ssh-discord-bot/auto_shutdown.py"
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -117,24 +113,24 @@ async def start(ctx):
             )
 
             server_sessions[guild_id] = {
-                "ctx": ctx,
+                "interaction": interaction,
                 "process": process
             }
 
-        await ctx.send("🚀 Starting Palworld server")
+        await interaction.response.send_message("🚀 Starting Palworld server")
 
     elif status == "ALREADY_RUNNING":
-        await ctx.send("🟡 Server is already running")
+        await interaction.response.send_message("🟡 Server is already running")
 
     else:
-        await ctx.send(
+        await interaction.response.send_message(
             f"❌ Failed to start the server\n```{result.stderr}```"
         )
 
 
-@bot.command()
-async def stop(ctx):
-    guild_id = ctx.guild.id
+@bot.tree.command(name="stop", description="팰월드 서버를 종료합니다.")
+async def stop(interaction: discord.Interaction):
+    guild_id = interaction.guild.id
 
     session = server_sessions.get(guild_id)
 
@@ -156,28 +152,28 @@ async def stop(ctx):
     status = result.stdout.strip()
 
     if status == "STOPPED":
-        await ctx.send("🛑 Shut down the palworld server")
+        await interaction.response.send_message("🛑 Shut down the palworld server")
 
     elif status == "ALREADY_STOPPED":
-        await ctx.send("🔴 Server is already shut down")
+        await interaction.response.send_message("🔴 Server is already shut down")
 
     elif status == "FAILED":
-        await ctx.send("❌ Failed to shut down the server")
+        await interaction.response.send_message("❌ Failed to shut down the server")
 
     else:
-        await ctx.send(
+        await interaction.response.send_message(
             f"⚠️ Unknown error\n```{result.stderr}```"
         )
 
 
-@bot.command()
-async def players(ctx):
+@bot.tree.command(name="players", description="팰월드 서버에 접속한 유저를 확인합니다.")
+async def players(interaction: discord.Interaction):
     try:
         players = get_players()
 
         # 접속자가 없는 경우
         if len(players) == 0:
-            await ctx.send(
+            await interaction.response.send_message(
                 "👥 **Active Player (0 person)**\n\n"
                 "No active players are currently active"
             )
@@ -189,17 +185,17 @@ async def players(ctx):
         for player in players:
             message += f"• {player['name']}\n"
 
-        await ctx.send(message)
+        await interaction.response.send_message(message)
 
     except Exception as e:
-        await ctx.send(
+        await interaction.response.send_message(
             "❌ Failed to get player list\n"
             f"```{e}```"
         )
 
 
-@bot.command()
-async def desktop_on(ctx):
+@bot.tree.command(name="desktop_on", description="데스크탑을 원격 실행합니다.")
+async def desktop_on(interaction: discord.Interaction):
     """데스크탑 Wake on LAN"""
 
     try:
@@ -214,12 +210,31 @@ async def desktop_on(ctx):
             text=True
         )
 
-        await ctx.send(
+        await interaction.response.send_message(
             f"📡 Wake on LAN 패킷을 전송했습니다.\n```{result.stdout}```"
         )
 
     except Exception as e:
-        await ctx.send(f"❌ 오류 발생\n```{e}```")
+        await interaction.response.send_message(f"❌ 오류 발생\n```{e}```")
+
+
+
+
+
+# slash apply construct
+
+
+@bot.event
+async def on_ready():
+    synced = await bot.tree.sync()
+    print(f"{bot.user} Login sucess!")
+    bot.loop.create_task(
+        monitor_auto_shutdown()
+    )
+    for command in synced:
+        print(f" /{command.name}")
+
+
 
 
 bot.run(DISCORD_TOKEN)
