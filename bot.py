@@ -226,11 +226,13 @@ async def desktop_on(interaction: discord.Interaction):
 
 @bot.event
 async def on_ready():
-    await bot.tree.sync()
+    synced = await bot.tree.sync()
     print(f"{bot.user} Login sucess!")
     bot.loop.create_task(
         monitor_auto_shutdown()
     )
+    for command in synced:
+        print(f" /{command.name}")
 
 
 
