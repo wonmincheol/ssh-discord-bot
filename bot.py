@@ -1,8 +1,10 @@
 import discord
 import subprocess
 import sys
+import asyncio
 from palworld_api import get_players
 from discord.ext import commands
+from discord improt app_commands
 from config import DISCORD_TOKEN
 from config import STATUS_SCRIPT
 from config import START_SCRIPT
@@ -11,21 +13,27 @@ from config import STOP_SCRIPT
 
 server_sessions = {}
 
-intents = discord.Intents.default()
-intents.message_content = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(
+    command_prefix="!", 
+    intents=discord.intents.default()
+)
+
+
+@bot.tree.command(name="ping", description="봇의 응답 상태를 확인합니다.")
+async def ping(interaction: discord.Interaction):
+    await interaction.response.send_message("Pong!")
 
 
 @bot.event
 async def on_ready():
+    await bot.tree.sync()
     print(f"{bot.user} Login sucess!")
     bot.loop.create_task(
         monitor_auto_shutdown()
     )
 
 
-import asyncio
 
 
 async def monitor_auto_shutdown():
@@ -220,6 +228,15 @@ async def desktop_on(ctx):
 
     except Exception as e:
         await ctx.send(f"❌ 오류 발생\n```{e}```")
+
+
+
+
+
+# slash apply construct
+
+
+
 
 
 bot.run(DISCORD_TOKEN)
