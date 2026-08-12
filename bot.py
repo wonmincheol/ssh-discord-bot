@@ -22,14 +22,6 @@ bot = commands.Bot(
 
 
 
-@bot.event
-async def on_ready():
-    await bot.tree.sync()
-    print(f"{bot.user} Login sucess!")
-    bot.loop.create_task(
-        monitor_auto_shutdown()
-    )
-
 
 
 
@@ -231,6 +223,14 @@ async def desktop_on(interaction: discord.Interaction):
 
 # slash apply construct
 
+
+@bot.event
+async def on_ready():
+    await bot.tree.sync()
+    print(f"{bot.user} Login sucess!")
+    bot.loop.create_task(
+        monitor_auto_shutdown()
+    )
 
 
 
