@@ -110,12 +110,23 @@ sudo -u discordbot /data/ssh-discord-bot/.venv/bin/python -m pip install -r /dat
 ### 4. 비밀 설정 작성
 
 공개 가능한 예제를 복사한 뒤 자신의 Discord 토큰과 서버 설정을 입력합니다.
+`.env.example`과 `.env`처럼 이름이 `.`으로 시작하는 파일은 Ubuntu에서 숨김
+파일로 취급되므로 일반 `ls` 명령에는 표시되지 않습니다. `ls -la`를 사용하면
+숨김 파일까지 확인할 수 있습니다.
+
+```bash
+cd /data/ssh-discord-bot
+ls -la
+```
+
+복사 전에는 `.env.example`만 있고, 복사 후에는 `.env`도 함께 표시되어야 합니다.
 
 ```bash
 sudo -u discordbot cp /data/ssh-discord-bot/.env.example /data/ssh-discord-bot/.env
 sudoedit /data/ssh-discord-bot/.env
 sudo chown discordbot:discordbot /data/ssh-discord-bot/.env
 sudo chmod 600 /data/ssh-discord-bot/.env
+ls -la /data/ssh-discord-bot/.env*
 ```
 
 최소한 다음 값을 실제 값으로 바꿔야 합니다.
