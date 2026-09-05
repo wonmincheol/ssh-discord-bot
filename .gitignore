@@ -1,2 +1,15 @@
+__pycache__/
+*.py[cod]
+
+# Local environments and secrets
+.env
+.env.*
+!.env.example
+.venv/
+secrets/
+*.pem
+*.key
+
 # Local development notes, reviews, and generated reports
 /development-logs/
+
