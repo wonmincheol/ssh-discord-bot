@@ -1,482 +1,121 @@
-# 🎮 Palworld Server Control Discord Bot
+# Mini PC Remote Control Discord Bot
 
-A Discord bot for managing a **Palworld Dedicated Server** running on **Ubuntu Server**.
+개인 미니 PC를 Discord 슬래시 명령으로 원격 관리하는 봇입니다. Palworld 지원은
+코어 기능이 아니라 **선택 가능한 확장 모듈**로 제공됩니다.
 
-This project allows users to **start, stop, monitor, and manage** a self-hosted Palworld server directly from Discord without SSH access.
+## 구조
 
-Designed for personal or small-group servers running on a Linux mini PC.
-
----
-
-## ✨ Features
-
-The bot uses the prefix `!`.
-
-| Command    | Description                                                                          |
-| ---------- | ------------------------------------------------------------------------------------ |
-| `!ping`    | Test whether the Discord bot is online.                                              |
-| `!who`     | Display the Linux account that the bot is currently running as (`whoami`).           |
-| `!status`  | Check whether the Palworld server is currently running.                              |
-| `!start`   | Start the Palworld server. If already running, duplicate execution is prevented.     |
-| `!stop`    | Safely stop the Palworld server.                                                     |
-| `!players` | Display the current online player list and player count using the Palworld REST API. |
-
----
-
-## 🚀 Auto Shutdown
-
-To reduce unnecessary power consumption, the bot can automatically stop the server when nobody is playing.
-
-When the server starts:
-
-- `auto_shutdown.py` starts automatically in the background.
-- The bot periodically checks the online player list.
-- If no players are connected for the configured amount of time, the server is safely shut down.
-- The monitoring interval and timeout are configurable in `config.py`.
-
----
-
-## 📁 Project Structure
-
-```
-discord-bot/
-├── bot.py
-├── auto_shutdown.py
-├── config.py
-├── requirements.txt
-├── README.md
-└── server-control/
-    ├── start-palworld.sh
-    ├── stop-palworld.sh
-    └── status-palworld.sh
+```text
+ssh-discord-bot/
+├── bot.py                         # 확장 로딩과 Discord 연결만 담당
+├── config.py                      # 봇 코어 설정
+├── extensions/
+│   ├── system.py                 # 미니 PC 공통 명령
+│   └── palworld/                 # 제거 가능한 Palworld 확장
+│       ├── __init__.py           # 확장 진입점
+│       ├── cog.py                # Discord 명령과 자동 종료 수명주기
+│       ├── service.py            # REST API와 서버 제어 실행
+│       ├── settings.py           # Palworld 전용 설정
+│       └── server-control/       # 시작/종료/상태 셸 스크립트
+└── requirements.txt
 ```
 
----
+`bot.py`는 Palworld를 직접 import하지 않습니다. 사용할 확장은
+`BOT_EXTENSIONS` 환경 변수로 선택합니다.
 
-## ⚙️ Configuration
+## 명령어
 
-Edit **config.py** before running the bot.
+공통 명령:
 
-```python
-from datetime import timedelta
+| 명령 | 설명 |
+| --- | --- |
+| `/ping` | 봇 응답 확인 |
+| `/who` | 봇 실행 계정 확인 |
+| `/desktop_on` | Wake on LAN 패킷 전송 |
 
-# =========================
-# Discord
-# =========================
-DISCORD_TOKEN = "YOUR_DISCORD_BOT_TOKEN"
+Palworld 확장을 활성화했을 때:
 
-# =========================
-# Palworld REST API
-# =========================
-PALWORLD_API_URL = "http://127.0.0.1:8212"
-PALWORLD_API_USER = "admin"
-PALWORLD_API_PASSWORD = "YOUR_ADMIN_PASSWORD"
+| 명령 | 설명 |
+| --- | --- |
+| `/palworld status` | 서버 상태 확인 |
+| `/palworld start` | 서버 시작 및 자동 종료 감시 시작 |
+| `/palworld stop` | 서버 종료 및 자동 종료 감시 중단 |
+| `/palworld players` | 접속 플레이어 조회 |
 
-# =========================
-# Server Control Scripts
-# =========================
-SCRIPT_PATH = "/data/discord-bot/server-control"
+기존 최상위 `/status`, `/start`, `/stop`, `/players`는 기능 경계를 명확히 하기
+위해 `/palworld ...` 하위 명령으로 변경되었습니다.
 
-START_SCRIPT = f"{SCRIPT_PATH}/start-palworld.sh"
-STOP_SCRIPT = f"{SCRIPT_PATH}/stop-palworld.sh"
-STATUS_SCRIPT = f"{SCRIPT_PATH}/status-palworld.sh"
-
-# =========================
-# Auto Shutdown
-# =========================
-AUTO_SHUTDOWN_ENABLED = True
-
-# Shutdown timeout when no players are online
-AUTO_SHUTDOWN_TIME = timedelta(hours=1)
-
-# Player check interval (seconds)
-CHECK_INTERVAL = 60
-```
-
-### Configuration Variables
-
-| Variable                | Description                          |
-| ----------------------- | ------------------------------------ |
-| `DISCORD_TOKEN`         | Discord Bot Token                    |
-| `PALWORLD_API_URL`      | Palworld REST API URL                |
-| `PALWORLD_API_USER`     | REST API Username                    |
-| `PALWORLD_API_PASSWORD` | REST API Password                    |
-| `START_SCRIPT`          | Server start script                  |
-| `STOP_SCRIPT`           | Server stop script                   |
-| `STATUS_SCRIPT`         | Server status script                 |
-| `AUTO_SHUTDOWN_ENABLED` | Enable or disable automatic shutdown |
-| `AUTO_SHUTDOWN_TIME`    | Time before automatic shutdown       |
-| `CHECK_INTERVAL`        | Player check interval                |
-
----
-
-## 📋 Prerequisites
+## 요구 사항
 
 - Ubuntu Server
-- Python 3.8+
-- Palworld Dedicated Server
-- Palworld REST API enabled
-- Discord Bot Token
-
----
-
-## 📦 Installation
-
-Clone the repository.
+- Python 3.10 이상
+- `wakeonlan` (Wake on LAN 명령을 사용할 경우)
+- Palworld Dedicated Server와 활성화된 REST API (Palworld 확장을 사용할 경우)
 
 ```bash
-git clone https://github.com/wonmincheol/ssh-discord-bot
-
+python3 -m pip install -r requirements.txt
 ```
 
-Install the required packages.
+## 설정
+
+설정은 환경 변수로 주입합니다. 최소한 Discord 토큰은 반드시 지정해야 합니다.
 
 ```bash
-pip install -r requirements.txt
+export DISCORD_TOKEN="YOUR_DISCORD_BOT_TOKEN"
+export BOT_EXTENSIONS="extensions.system,extensions.palworld"
+export WOL_BROADCAST_ADDRESS="172.30.1.255"
+export WOL_MAC_ADDRESS="10:FF:E0:C0:F2:06"
+
+export PALWORLD_API_URL="http://127.0.0.1:8212"
+export PALWORLD_API_USER="admin"
+export PALWORLD_API_PASSWORD="YOUR_ADMIN_PASSWORD"
+export PALWORLD_SCRIPT_PATH="/data/ssh-discord-bot/extensions/palworld/server-control"
+export PALWORLD_AUTO_SHUTDOWN_ENABLED="true"
+export PALWORLD_AUTO_SHUTDOWN_SECONDS="3600"
+export PALWORLD_CHECK_INTERVAL="60"
+export PALWORLD_COMMAND_TIMEOUT="30"
 ```
 
-If you don't have a requirements file yet, install manually.
+실행:
 
 ```bash
-pip install discord.py requests
+python3 bot.py
 ```
 
----
+## Palworld 없이 실행하기
 
-## 🔐 Sudo Configuration
-
-The bot executes shell scripts using `sudo`.
-
-Grant passwordless permission for the required scripts.
-
-Open sudoers.
+Palworld 기능을 끄는 데 코드 수정은 필요하지 않습니다.
 
 ```bash
-sudo visudo
+export BOT_EXTENSIONS="extensions.system"
+python3 bot.py
 ```
 
-Example:
+지원 자체를 프로젝트에서 제거하려면 다음 항목만 제거하면 됩니다.
+
+- `extensions/palworld/` 디렉터리
+- `BOT_EXTENSIONS`의 `extensions.palworld` 값
+- 더 이상 다른 확장에서 사용하지 않는 경우 `requirements.txt`의 `requests`
+
+## sudo 권한
+
+Palworld 확장은 셸 스크립트를 `sudo`로 실행합니다. 실제 봇 실행 사용자 이름과
+설치 경로에 맞게 `visudo`에서 정확한 파일만 허용하세요.
 
 ```text
-discordbot ALL=(ALL) NOPASSWD: /data/discord-bot/server-control/start-palworld.sh
-discordbot ALL=(ALL) NOPASSWD: /data/discord-bot/server-control/stop-palworld.sh
-discordbot ALL=(ALL) NOPASSWD: /data/discord-bot/server-control/status-palworld.sh
+discordbot ALL=(ALL) NOPASSWD: /bin/bash /data/ssh-discord-bot/extensions/palworld/server-control/start.sh
+discordbot ALL=(ALL) NOPASSWD: /bin/bash /data/ssh-discord-bot/extensions/palworld/server-control/stop.sh
+discordbot ALL=(ALL) NOPASSWD: /bin/bash /data/ssh-discord-bot/extensions/palworld/server-control/status.sh
 ```
 
-Replace `discordbot` with the Linux user that actually runs the bot.
+## 새 기능 확장하기
 
----
+새 기능은 `extensions/<기능명>/` 패키지 또는 단일 Cog 모듈로 만들고 비동기
+`setup(bot)` 진입점을 제공하면 됩니다. 이후 해당 import 경로를
+`BOT_EXTENSIONS`에 추가합니다. 이렇게 하면 Discord 연결부를 수정하지 않고도
+게임 서버, 백업, 시스템 모니터링 같은 기능을 독립적으로 추가하거나 제거할 수
+있습니다.
 
-## ▶️ Running the Bot
+## License
 
-Run normally.
-
-```bash
-python bot.py
-```
-
----
-
-## 🔧 Palworld Server Requirements
-
-This bot uses the **Palworld REST API**.
-
-The server must be configured with:
-
-- REST API enabled
-- Admin password configured
-- REST API port open (default: `8212`)
-
----
-
-## 📷 Example
-
-```text
-!status
-
-✅ Palworld Server is Running
-```
-
-```text
-!players
-
-👥 Players Online (3)
-
-- Alice
-- Bob
-- Charlie
-```
-
-```text
-!start
-
-🚀 Starting Palworld Server...
-```
-
-```text
-!stop
-
-🛑 Stopping Palworld Server...
-```
-
----
-
-## 💡 Future Plans
-
-- Discord Slash Commands
-- Server restart command
-- Automatic server update
-- Scheduled server start
-- Rich Embed UI
-- Server performance monitoring (CPU / Memory)
-- Discord permission management
-- Multi-server support
-
----
-
-## 📄 License
-
-This project is released under the MIT License.
-
-Feel free to use and modify it for your own server.
-
----
-
-# 🎮 Palworld Server Control Discord Bot
-
-Ubuntu Server에서 실행 중인 **Palworld Dedicated Server**를 Discord를 통해 제어할 수 있는 디스코드 봇입니다.
-
-SSH에 직접 접속하지 않아도 Discord 명령어만으로 서버를 시작, 종료, 상태 확인 및 접속 플레이어 조회가 가능합니다.
-
-개인 미니 PC 환경에서 여러 명이 함께 사용하는 펠월드 서버를 보다 편리하게 관리하기 위해 제작되었습니다.
-
----
-
-# ✨ 주요 기능
-
-봇의 Prefix는 `!`를 사용합니다.
-
-| 명령어     | 설명                                                                   |
-| ---------- | ---------------------------------------------------------------------- |
-| `!ping`    | 봇이 정상적으로 동작하는지 확인합니다.                                 |
-| `!who`     | 현재 봇이 어떤 Linux 계정으로 실행되고 있는지 확인합니다. (`whoami`)   |
-| `!status`  | 현재 펠월드 서버의 실행 여부를 확인합니다.                             |
-| `!start`   | 펠월드 서버를 시작합니다. 이미 실행 중인 경우 중복 실행되지 않습니다.  |
-| `!stop`    | 펠월드 서버를 안전하게 종료합니다.                                     |
-| `!players` | 현재 접속 중인 플레이어 목록과 총 인원수를 조회합니다. (REST API 사용) |
-
----
-
-# 🚀 자동 종료(Auto Shutdown)
-
-불필요한 서버 구동 시간을 줄이기 위해 자동 종료 기능을 제공합니다.
-
-서버가 시작되면
-
-- `auto_shutdown.py`가 자동으로 백그라운드에서 실행됩니다.
-- 일정 주기마다 접속 중인 플레이어를 확인합니다.
-- 설정된 시간 동안 플레이어가 한 명도 접속하지 않으면 서버를 자동으로 종료합니다.
-- 종료 시간 및 확인 주기는 `config.py`에서 자유롭게 변경할 수 있습니다.
-
----
-
-# 📁 프로젝트 구조
-
-```text
-discord-bot/
-├── bot.py
-├── auto_shutdown.py
-├── config.py
-├── requirements.txt
-├── README.md
-└── server-control/
-    ├── start-palworld.sh
-    ├── stop-palworld.sh
-    └── status-palworld.sh
-```
-
----
-
-# ⚙️ 설정 방법
-
-실행 전에 `config.py`를 자신의 환경에 맞게 수정해야 합니다.
-
-```python
-from datetime import timedelta
-
-# =========================
-# Discord 설정
-# =========================
-DISCORD_TOKEN = "YOUR_DISCORD_BOT_TOKEN"
-
-# =========================
-# Palworld REST API
-# =========================
-PALWORLD_API_URL = "http://127.0.0.1:8212"
-PALWORLD_API_USER = "admin"
-PALWORLD_API_PASSWORD = "YOUR_ADMIN_PASSWORD"
-
-# =========================
-# 서버 제어 스크립트
-# =========================
-SCRIPT_PATH = "/data/discord-bot/server-control"
-
-START_SCRIPT = f"{SCRIPT_PATH}/start-palworld.sh"
-STOP_SCRIPT = f"{SCRIPT_PATH}/stop-palworld.sh"
-STATUS_SCRIPT = f"{SCRIPT_PATH}/status-palworld.sh"
-
-# =========================
-# 자동 종료 설정
-# =========================
-AUTO_SHUTDOWN_ENABLED = True
-
-# 플레이어가 없을 경우 자동 종료까지 대기 시간
-AUTO_SHUTDOWN_TIME = timedelta(hours=1)
-
-# 플레이어 확인 주기 (초)
-CHECK_INTERVAL = 60
-```
-
-## 설정 변수
-
-| 변수                    | 설명                     |
-| ----------------------- | ------------------------ |
-| `DISCORD_TOKEN`         | Discord Bot Token        |
-| `PALWORLD_API_URL`      | Palworld REST API 주소   |
-| `PALWORLD_API_USER`     | REST API 관리자 계정     |
-| `PALWORLD_API_PASSWORD` | REST API 비밀번호        |
-| `START_SCRIPT`          | 서버 시작 스크립트       |
-| `STOP_SCRIPT`           | 서버 종료 스크립트       |
-| `STATUS_SCRIPT`         | 서버 상태 확인 스크립트  |
-| `AUTO_SHUTDOWN_ENABLED` | 자동 종료 기능 사용 여부 |
-| `AUTO_SHUTDOWN_TIME`    | 자동 종료까지 대기 시간  |
-| `CHECK_INTERVAL`        | 플레이어 확인 주기       |
-
----
-
-# 📋 요구 사항
-
-- Ubuntu Server
-- Python 3.8 이상
-- Palworld Dedicated Server
-- Palworld REST API 활성화
-- Discord Bot Token
-
----
-
-# 📦 설치 방법
-
-프로젝트를 내려받습니다.
-
-```bash
-git clone https://github.com/wonmincheol/ssh-discord-bot
-```
-
-필요한 라이브러리를 설치합니다.
-
-```bash
-pip install -r requirements.txt
-```
-
-requirements.txt가 없다면
-
-```bash
-pip install discord.py requests
-```
-
-를 실행하면 됩니다.
-
----
-
-# 🔐 sudo 권한 설정
-
-봇은 서버 제어를 위해 `sudo`를 통해 쉘 스크립트를 실행합니다.
-
-비밀번호 입력 없이 실행할 수 있도록 sudo 권한을 부여해야 합니다.
-
-```bash
-sudo visudo
-```
-
-예시
-
-```text
-discordbot ALL=(ALL) NOPASSWD: /data/discord-bot/server-control/start-palworld.sh
-discordbot ALL=(ALL) NOPASSWD: /data/discord-bot/server-control/stop-palworld.sh
-discordbot ALL=(ALL) NOPASSWD: /data/discord-bot/server-control/status-palworld.sh
-```
-
-※ `discordbot`은 실제 봇을 실행하는 Linux 계정명으로 변경하세요.
-
----
-
-# ▶️ 실행 방법
-
-```bash
-python bot.py
-```
-
----
-
-# 🔧 Palworld 서버 설정
-
-이 프로젝트는 **Palworld REST API**를 이용합니다.
-
-서버에서 다음 항목이 활성화되어 있어야 합니다.
-
-- REST API 활성화
-- 관리자(Admin) 비밀번호 설정
-- REST API 포트 개방 (기본 8212)
-
----
-
-# 📷 실행 예시
-
-```text
-!status
-
-🟢 Palworld server is running
-```
-
-```text
-!players
-
-👥 현재 접속자 (3명)
-
-- Alice
-- Bob
-- Charlie
-```
-
-```text
-!start
-
-🚀 Starting Palworld server
-```
-
-```text
-!stop
-
-🛑 Shut down the palworld server
-```
-
----
-
-# 💡 앞으로 추가 예정인 기능
-
-- Slash Command 지원
-- 서버 재시작 명령어
-- 서버 자동 업데이트
-- 예약 실행 기능
-- Discord Embed UI 개선
-- CPU / 메모리 사용량 조회
-- Discord 권한 관리
-- 다중 서버 지원
-
----
-
-# 📄 License
-
-MIT License
-
-개인 또는 소규모 서버에서 자유롭게 사용 및 수정할 수 있습니다.
+MIT
