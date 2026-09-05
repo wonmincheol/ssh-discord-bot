@@ -1,0 +1,17 @@
+[Unit]
+Description=Mini PC Remote Control Discord Bot
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=discordbot
+WorkingDirectory=/data/ssh-discord-bot
+EnvironmentFile=/data/ssh-discord-bot/.env
+ExecStart=/data/ssh-discord-bot/.venv/bin/python -u /data/ssh-discord-bot/bot.py
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target
