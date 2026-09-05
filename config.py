@@ -1,34 +1,37 @@
-# =========================
-# Discord
-# =========================
+"""Settings required by the bot core.
 
-DISCORD_TOKEN = "DISCORD_TOKEN"
+Feature-specific settings live beside each extension. The core therefore does
+not need to know anything about Palworld and keeps working when that extension
+is disabled or removed.
+"""
 
-# =========================
-# Palworld REST API
-# =========================
+import os
 
-PALWORLD_API_URL = "http://127.0.0.1:8212"
-PALWORLD_API_USER = "admin"
-PALWORLD_API_PASSWORD = "PALWORLD_API_PASSWORD"
+from dotenv import load_dotenv
 
-# =========================
-# Server Control Scripts
-# =========================
 
-SCRIPT_PATH = "/data/ssh-discord-bot/server-control"
+load_dotenv()
 
-START_SCRIPT = f"{SCRIPT_PATH}/start-palworld.sh"
-STOP_SCRIPT = f"{SCRIPT_PATH}/stop-palworld.sh"
-STATUS_SCRIPT = f"{SCRIPT_PATH}/status-palworld.sh"
 
-import datetime
+def _required(name: str) -> str:
+    value = os.getenv(name, "").strip()
+    if not value:
+        raise RuntimeError(
+            f"Missing required setting {name}. "
+            "Copy .env.example to .env and fill in your own value."
+        )
+    return value
 
-# Auto Shutdown Settings
-AUTO_SHUTDOWN_ENABLED = True
 
-# Wait time to end if player is not present
-AUTO_SHUTDOWN_TIME = datetime.timedelta(hours=1)
-# AUTO_SHUTDOWN_TIME = datetime.timedelta(minutes=5)
-# Whether to check the player every few seconds
-CHECK_INTERVAL = 60
+DISCORD_TOKEN = _required("DISCORD_TOKEN")
+
+
+def _enabled_extensions() -> tuple[str, ...]:
+    configured = os.getenv(
+        "BOT_EXTENSIONS",
+        "extensions.system,extensions.palworld",
+    )
+    return tuple(name.strip() for name in configured.split(",") if name.strip())
+
+
+EXTENSIONS = _enabled_extensions()

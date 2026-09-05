@@ -11,4 +11,5 @@ then
     echo "STOPPED"
 else
     echo "FAILED"
+    exit 1
 fi
