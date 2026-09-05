@@ -7,8 +7,23 @@ is disabled or removed.
 
 import os
 
+from dotenv import load_dotenv
 
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN", "DISCORD_TOKEN")
+
+load_dotenv()
+
+
+def _required(name: str) -> str:
+    value = os.getenv(name, "").strip()
+    if not value:
+        raise RuntimeError(
+            f"Missing required setting {name}. "
+            "Copy .env.example to .env and fill in your own value."
+        )
+    return value
+
+
+DISCORD_TOKEN = _required("DISCORD_TOKEN")
 
 
 def _enabled_extensions() -> tuple[str, ...]:

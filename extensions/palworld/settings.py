@@ -32,7 +32,7 @@ class PalworldSettings:
         return cls(
             api_url=os.getenv("PALWORLD_API_URL", "http://127.0.0.1:8212").rstrip("/"),
             api_user=os.getenv("PALWORLD_API_USER", "admin"),
-            api_password=os.getenv("PALWORLD_API_PASSWORD", "PALWORLD_API_PASSWORD"),
+            api_password=os.getenv("PALWORLD_API_PASSWORD", ""),
             start_script=f"{script_path}/start.sh",
             stop_script=f"{script_path}/stop.sh",
             status_script=f"{script_path}/status.sh",

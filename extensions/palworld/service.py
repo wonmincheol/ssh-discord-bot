@@ -32,6 +32,9 @@ class PalworldService:
         return await asyncio.to_thread(self._get_players_sync)
 
     def _get_players_sync(self) -> list[dict]:
+        if not self.settings.api_password:
+            raise RuntimeError("PALWORLD_API_PASSWORD is not configured")
+
         response = requests.get(
             f"{self.settings.api_url}/v1/api/players",
             auth=(self.settings.api_user, self.settings.api_password),

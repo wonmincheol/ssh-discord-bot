@@ -58,23 +58,22 @@ python3 -m pip install -r requirements.txt
 
 ## 설정
 
-설정은 환경 변수로 주입합니다. 최소한 Discord 토큰은 반드시 지정해야 합니다.
+공개 가능한 예제 설정을 복사한 뒤 자신의 값으로 채웁니다.
 
 ```bash
-export DISCORD_TOKEN="YOUR_DISCORD_BOT_TOKEN"
-export BOT_EXTENSIONS="extensions.system,extensions.palworld"
-export WOL_BROADCAST_ADDRESS="172.30.1.255"
-export WOL_MAC_ADDRESS="10:FF:E0:C0:F2:06"
-
-export PALWORLD_API_URL="http://127.0.0.1:8212"
-export PALWORLD_API_USER="admin"
-export PALWORLD_API_PASSWORD="YOUR_ADMIN_PASSWORD"
-export PALWORLD_SCRIPT_PATH="/data/ssh-discord-bot/extensions/palworld/server-control"
-export PALWORLD_AUTO_SHUTDOWN_ENABLED="true"
-export PALWORLD_AUTO_SHUTDOWN_SECONDS="3600"
-export PALWORLD_CHECK_INTERVAL="60"
-export PALWORLD_COMMAND_TIMEOUT="30"
+cp .env.example .env
+nano .env
 ```
+
+`.env`에는 Discord 토큰과 Palworld 관리자 비밀번호 같은 실제 비밀값을 넣습니다.
+이 파일과 `.env.*`, 개인 키 및 `secrets/` 디렉터리는 `.gitignore`로 제외되어
+Git에 올라가지 않습니다. `.env.example`에는 자리표시자만 유지해야 합니다.
+
+환경 변수를 직접 관리하는 systemd, Docker 등의 환경에서는 `.env` 대신 같은
+이름의 환경 변수를 주입해도 됩니다. 환경 변수가 `.env`보다 우선합니다.
+
+> 비밀값을 한 번이라도 커밋했다면 `.gitignore`에 추가하는 것만으로는 안전해지지
+> 않습니다. 해당 토큰이나 비밀번호를 먼저 폐기·재발급해야 합니다.
 
 실행:
 
@@ -87,7 +86,7 @@ python3 bot.py
 Palworld 기능을 끄는 데 코드 수정은 필요하지 않습니다.
 
 ```bash
-export BOT_EXTENSIONS="extensions.system"
+echo 'BOT_EXTENSIONS=extensions.system' >> .env
 python3 bot.py
 ```
 

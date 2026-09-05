@@ -1,5 +1,6 @@
 import os
 import sys
+from dataclasses import replace
 from types import ModuleType
 import unittest
 from unittest.mock import Mock, patch
@@ -42,7 +43,10 @@ class PalworldSettingsTests(unittest.TestCase):
 
 class PalworldServiceTests(unittest.TestCase):
     def test_get_players_uses_extension_settings(self) -> None:
-        settings = PalworldSettings.from_environment()
+        settings = replace(
+            PalworldSettings.from_environment(),
+            api_password="test-password",
+        )
         service = PalworldService(settings)
         response = Mock()
         response.json.return_value = {"players": [{"name": "Lamball"}]}
@@ -59,13 +63,24 @@ class PalworldServiceTests(unittest.TestCase):
         )
 
     def test_invalid_players_payload_is_rejected(self) -> None:
-        service = PalworldService(PalworldSettings.from_environment())
+        settings = replace(
+            PalworldSettings.from_environment(),
+            api_password="test-password",
+        )
+        service = PalworldService(settings)
         response = Mock()
         response.json.return_value = {"players": "not-a-list"}
 
         with patch("extensions.palworld.service.requests.get", return_value=response):
             with self.assertRaises(ValueError):
                 service._get_players_sync()
+
+    def test_player_api_requires_a_password(self) -> None:
+        settings = replace(PalworldSettings.from_environment(), api_password="")
+        service = PalworldService(settings)
+
+        with self.assertRaises(RuntimeError):
+            service._get_players_sync()
 
 
 if __name__ == "__main__":
