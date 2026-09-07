@@ -143,16 +143,17 @@ ls -la /data/ssh-discord-bot/.env*
 
 ```dotenv
 DISCORD_TOKEN=replace-with-your-discord-bot-token
-BOT_GUILD_ID=000000000000000000
+BOT_GUILD_IDS=000000000000000000,111111111111111111
 BOT_OWNER_IDS=000000000000000000
 WOL_MAC_ADDRESS=00:00:00:00:00:00
 PALWORLD_API_PASSWORD=replace-with-your-palworld-admin-password
 ```
 
-`BOT_GUILD_ID`에는 봇을 사용할 Discord 서버 ID를, `BOT_OWNER_IDS`에는 복구
-권한을 가질 본계정의 사용자 ID를 입력합니다. 소유자가 여러 명이면 쉼표로
-구분합니다. 사용자 이름이 아니라 Discord 개발자 모드에서 복사한 숫자 ID를
-사용해야 합니다.
+`BOT_GUILD_IDS`에는 봇을 사용할 Discord 서버 ID들을 쉼표로 구분해 입력하고,
+`BOT_OWNER_IDS`에는 복구 권한을 가질 본계정의 사용자 ID를 입력합니다. 소유자가
+여러 명이면 마찬가지로 쉼표로 구분합니다. 사용자 이름이 아니라 Discord 개발자
+모드에서 복사한 숫자 ID를 사용해야 합니다. 기존 단일 `BOT_GUILD_ID` 설정도
+호환되지만 새 설정에서는 `BOT_GUILD_IDS`를 사용하세요.
 
 `WOL_MAC_ADDRESS`는 `/desktop_on`을 사용할 때 필수입니다. 이 값과 외부 명령의
 원문 출력은 Discord 응답에 표시되지 않으며, 실제 주소는 `.env`에만 보관하세요.
@@ -169,7 +170,8 @@ Git에 올라가지 않습니다. `.env.example`에는 실제 비밀값을 입�
 서버의 역할 설정에서 봇 역할이 봇이 생성할 권한 역할보다 위에 있어야 합니다.
 봇에 Discord의 전체 관리자 권한을 부여할 필요는 없습니다.
 
-봇을 시작한 뒤 `.env`에 등록한 본계정으로 다음 순서대로 실행합니다.
+봇을 시작한 뒤 `.env`에 등록한 본계정으로 **각 서버에서** 다음 순서대로
+실행합니다.
 
 1. `/permission setup`
 2. `/permission grant user:@부계정 permission:admin`

@@ -35,7 +35,7 @@ class FakeGuild:
 class AccessSettingsTests(unittest.TestCase):
     def test_settings_load_discord_ids(self) -> None:
         environment = {
-            "BOT_GUILD_ID": "123",
+            "BOT_GUILD_IDS": "123, 234",
             "BOT_OWNER_IDS": "456, 789",
             "BOT_PERMISSION_DB_PATH": "custom/permissions.sqlite3",
         }
@@ -43,20 +43,31 @@ class AccessSettingsTests(unittest.TestCase):
         with patch.dict(os.environ, environment, clear=True):
             settings = AccessSettings.from_environment()
 
-        self.assertEqual(settings.guild_id, 123)
+        self.assertEqual(settings.guild_ids, frozenset({123, 234}))
         self.assertEqual(settings.owner_ids, frozenset({456, 789}))
         self.assertEqual(settings.database_path, "custom/permissions.sqlite3")
 
     def test_settings_require_an_owner(self) -> None:
-        with patch.dict(os.environ, {"BOT_GUILD_ID": "123"}, clear=True):
+        with patch.dict(os.environ, {"BOT_GUILD_IDS": "123"}, clear=True):
             with self.assertRaises(RuntimeError):
                 AccessSettings.from_environment()
+
+    def test_legacy_single_guild_setting_is_supported(self) -> None:
+        environment = {
+            "BOT_GUILD_ID": "123",
+            "BOT_OWNER_IDS": "456",
+        }
+
+        with patch.dict(os.environ, environment, clear=True):
+            settings = AccessSettings.from_environment()
+
+        self.assertEqual(settings.guild_ids, frozenset({123}))
 
 
 class PermissionManagerTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.settings = AccessSettings(
-            guild_id=123,
+            guild_ids=frozenset({123, 234}),
             owner_ids=frozenset({1}),
             database_path=":memory:",
         )
@@ -102,6 +113,19 @@ class PermissionManagerTests(unittest.IsolatedAsyncioTestCase):
         owner = SimpleNamespace(id=1, roles=[])
 
         self.assertFalse(self.manager.has_capability(owner, 999, ADMIN))
+
+    def test_permissions_are_allowed_in_second_configured_guild(self) -> None:
+        owner = SimpleNamespace(id=1, roles=[])
+
+        self.assertTrue(self.manager.has_capability(owner, 234, ADMIN))
+
+    def test_role_permissions_are_independent_for_each_guild(self) -> None:
+        self.store.set_role_id(123, ADMIN, 10)
+        self.store.set_role_id(234, ADMIN, 20)
+        first_guild_admin = SimpleNamespace(id=2, roles=[SimpleNamespace(id=10)])
+
+        self.assertTrue(self.manager.has_capability(first_guild_admin, 123, ADMIN))
+        self.assertFalse(self.manager.has_capability(first_guild_admin, 234, ADMIN))
 
 
 class PermissionCogTests(unittest.IsolatedAsyncioTestCase):

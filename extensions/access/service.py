@@ -23,7 +23,7 @@ class PermissionManager:
         self.store = store
 
     def is_configured_guild(self, guild_id: int | None) -> bool:
-        return guild_id == self.settings.guild_id
+        return guild_id in self.settings.guild_ids
 
     def is_owner(self, user_id: int) -> bool:
         return user_id in self.settings.owner_ids
