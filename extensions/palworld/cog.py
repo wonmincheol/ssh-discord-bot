@@ -41,8 +41,9 @@ class PalworldCog(
                 message = "🔴 Palworld server is shut down"
             else:
                 message = self._failure_message("Status check failed", result)
-        except Exception as error:
-            message = f"⚠️ Status check failed\n```{error}```"
+        except Exception:
+            logger.exception("Palworld status check failed")
+            message = self._public_failure_message("Status check failed", warning=True)
         await interaction.followup.send(message)
 
     @app_commands.command(name="start", description="서버를 실행합니다.")
@@ -58,8 +59,9 @@ class PalworldCog(
                 message = "🟡 Server is already running"
             else:
                 message = self._failure_message("Failed to start the server", result)
-        except Exception as error:
-            message = f"❌ Failed to start the server\n```{error}```"
+        except Exception:
+            logger.exception("Failed to start the Palworld server")
+            message = self._public_failure_message("Failed to start the server")
         await interaction.followup.send(message)
 
     @app_commands.command(name="stop", description="서버를 종료합니다.")
@@ -74,8 +76,9 @@ class PalworldCog(
                 message = "🔴 Server is already shut down"
             else:
                 message = self._failure_message("Failed to shut down the server", result)
-        except Exception as error:
-            message = f"❌ Failed to shut down the server\n```{error}```"
+        except Exception:
+            logger.exception("Failed to stop the Palworld server")
+            message = self._public_failure_message("Failed to shut down the server")
         await interaction.followup.send(message)
 
     @app_commands.command(name="players", description="접속 중인 플레이어를 확인합니다.")
@@ -90,8 +93,9 @@ class PalworldCog(
                     f"• {player.get('name', 'Unknown')}" for player in players
                 )
                 message = f"👥 **Active players ({len(players)})**\n\n{names}"
-        except Exception as error:
-            message = f"❌ Failed to get player list\n```{error}```"
+        except Exception:
+            logger.exception("Failed to get the Palworld player list")
+            message = self._public_failure_message("Failed to get player list")
         await interaction.followup.send(message)
 
     def _start_auto_shutdown(self, channel_id: int) -> None:
@@ -159,4 +163,10 @@ class PalworldCog(
     @staticmethod
     def _failure_message(summary: str, result: CommandResult) -> str:
         details = result.stderr or result.stdout or f"exit code {result.returncode}"
-        return f"❌ {summary}\n```{details}```"
+        logger.error("%s (exit code %d): %s", summary, result.returncode, details)
+        return PalworldCog._public_failure_message(summary)
+
+    @staticmethod
+    def _public_failure_message(summary: str, *, warning: bool = False) -> str:
+        icon = "⚠️" if warning else "❌"
+        return f"{icon} {summary}\n자세한 내용은 봇 관리자에게 문의하세요."

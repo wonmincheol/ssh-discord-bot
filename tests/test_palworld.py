@@ -5,6 +5,8 @@ from types import ModuleType
 import unittest
 from unittest.mock import Mock, patch
 
+from tests.discord_stub import install_discord_stub
+
 # The service is tested with a mocked HTTP boundary, so the tests do not need
 # the optional runtime dependency to be installed in the test interpreter.
 if "requests" not in sys.modules:
@@ -12,7 +14,10 @@ if "requests" not in sys.modules:
     requests_stub.get = Mock()
     sys.modules["requests"] = requests_stub
 
-from extensions.palworld.service import PalworldService
+install_discord_stub()
+
+from extensions.palworld.cog import PalworldCog
+from extensions.palworld.service import CommandResult, PalworldService
 from extensions.palworld.settings import PalworldSettings
 
 
@@ -81,6 +86,18 @@ class PalworldServiceTests(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             service._get_players_sync()
+
+
+class PalworldMessagePrivacyTests(unittest.TestCase):
+    def test_command_failure_does_not_return_raw_output(self) -> None:
+        private_error = "connection failed at 192.168.0.10 using /private/path"
+        result = CommandResult(returncode=1, stdout="", stderr=private_error)
+
+        message = PalworldCog._failure_message("Status check failed", result)
+
+        self.assertIn("Status check failed", message)
+        self.assertNotIn(private_error, message)
+        self.assertNotIn("192.168.0.10", message)
 
 
 if __name__ == "__main__":
