@@ -10,8 +10,17 @@ Discord 슬래시 명령으로 개인 미니 PC를 원격 관리하는 봇입니
 | 명령 | 설명 |
 | --- | --- |
 | `/ping` | 봇 응답 확인 |
-| `/who` | 봇 실행 계정 확인 |
-| `/desktop_on` | Wake on LAN 패킷 전송 |
+| `/desktop_on` | Wake on LAN 패킷 전송 (`admin` 또는 `desktop_power` 필요) |
+
+권한 관리 명령은 `.env` 소유자와 `Bot • Admin` 역할 보유자만 사용할 수 있습니다.
+
+| 명령 | 설명 |
+| --- | --- |
+| `/permission setup` | 봇 권한 역할 생성·복구 |
+| `/permission grant` | 사용자에게 `admin` 또는 `desktop_power` 부여 |
+| `/permission revoke` | 사용자의 권한 회수 |
+| `/permission show` | 사용자의 봇 권한 확인 |
+| `/permission list` | 사용 가능한 권한과 역할 상태 확인 |
 
 Palworld 확장을 활성화했을 때:
 
@@ -34,6 +43,7 @@ ssh-discord-bot/
 ├── deploy/
 │   └── discord-bot.service       # 저장소에서 관리하는 systemd 원본
 ├── extensions/
+│   ├── access/                   # Discord 역할 기반 명령 권한 관리
 │   ├── system.py                 # 미니 PC 공통 명령
 │   └── palworld/                 # 제거 가능한 Palworld 확장
 │       ├── cog.py                # Discord 명령 및 자동 종료
@@ -133,8 +143,19 @@ ls -la /data/ssh-discord-bot/.env*
 
 ```dotenv
 DISCORD_TOKEN=replace-with-your-discord-bot-token
+BOT_GUILD_ID=000000000000000000
+BOT_OWNER_IDS=000000000000000000
+WOL_MAC_ADDRESS=00:00:00:00:00:00
 PALWORLD_API_PASSWORD=replace-with-your-palworld-admin-password
 ```
+
+`BOT_GUILD_ID`에는 봇을 사용할 Discord 서버 ID를, `BOT_OWNER_IDS`에는 복구
+권한을 가질 본계정의 사용자 ID를 입력합니다. 소유자가 여러 명이면 쉼표로
+구분합니다. 사용자 이름이 아니라 Discord 개발자 모드에서 복사한 숫자 ID를
+사용해야 합니다.
+
+`WOL_MAC_ADDRESS`는 `/desktop_on`을 사용할 때 필수입니다. 이 값과 외부 명령의
+원문 출력은 Discord 응답에 표시되지 않으며, 실제 주소는 `.env`에만 보관하세요.
 
 `.env`, `.env.*`, 개인 키와 `secrets/` 디렉터리는 `.gitignore`에 포함되어
 Git에 올라가지 않습니다. `.env.example`에는 실제 비밀값을 입력하지 마세요.
@@ -142,7 +163,25 @@ Git에 올라가지 않습니다. `.env.example`에는 실제 비밀값을 입�
 > 비밀값을 한 번이라도 Git에 커밋했다면 `.gitignore`만으로는 보호되지 않습니다.
 > 해당 토큰이나 비밀번호를 폐기하고 새 값으로 재발급해야 합니다.
 
-### 5. Palworld 제어 sudo 권한 설정
+### 5. Discord 권한 역할 설정
+
+봇을 서버에 초대할 때 **역할 관리(Manage Roles)** 권한을 부여합니다. Discord
+서버의 역할 설정에서 봇 역할이 봇이 생성할 권한 역할보다 위에 있어야 합니다.
+봇에 Discord의 전체 관리자 권한을 부여할 필요는 없습니다.
+
+봇을 시작한 뒤 `.env`에 등록한 본계정으로 다음 순서대로 실행합니다.
+
+1. `/permission setup`
+2. `/permission grant user:@부계정 permission:admin`
+
+이후 부계정의 `Bot • Admin` 역할이 유지되는 동안 본계정과 동일하게 모든 봇
+명령과 권한 관리 명령을 사용할 수 있습니다. `.env` 소유자 권한은 Discord에서
+회수할 수 없으므로 역할이 삭제되거나 설정이 손상되어도 복구할 수 있습니다.
+
+권한 데이터베이스는 기본적으로 `data/permissions.sqlite3`에 생성됩니다. 역할
+ID만 저장하며 실제 권한 보유자는 Discord 역할로 관리됩니다.
+
+### 6. Palworld 제어 sudo 권한 설정
 
 Palworld 확장을 사용할 때만 필요합니다. `sudo visudo`를 이용하면 문법 오류로
 sudo 설정이 손상되는 일을 방지할 수 있습니다.
@@ -161,7 +200,7 @@ discordbot ALL=(ALL) NOPASSWD: /bin/bash /data/ssh-discord-bot/extensions/palwor
 
 실행 계정이나 설치 경로를 변경했다면 이 설정도 동일하게 변경해야 합니다.
 
-### 6. systemd 서비스 설치
+### 7. systemd 서비스 설치
 
 서비스 파일은 두 위치에서 서로 다른 역할을 갖습니다.
 
@@ -192,7 +231,7 @@ sudo systemctl enable --now discord-bot
 `.env`를 사용한다면 덮어쓸 필요가 없습니다. 내용을 수정했을 때만
 `daemon-reload`와 재시작을 수행하면 됩니다.
 
-### 7. 최초 실행 확인
+### 8. 최초 실행 확인
 
 ```bash
 sudo systemctl status discord-bot --no-pager -l
@@ -267,7 +306,7 @@ sudo systemctl restart discord-bot
 `.env`에서 다음과 같이 공통 시스템 확장만 지정합니다.
 
 ```dotenv
-BOT_EXTENSIONS=extensions.system
+BOT_EXTENSIONS=extensions.access,extensions.system
 ```
 
 변경 후 서비스를 재시작합니다.
@@ -287,7 +326,7 @@ Palworld 지원 자체를 저장소에서 제거하려면 다음 항목만 제�
 `.env`에서 두 확장을 지정하고 서비스를 재시작합니다.
 
 ```dotenv
-BOT_EXTENSIONS=extensions.system,extensions.palworld
+BOT_EXTENSIONS=extensions.access,extensions.system,extensions.palworld
 ```
 
 ```bash
@@ -299,6 +338,9 @@ sudo systemctl restart discord-bot
 - `status=203/EXEC`: `.venv/bin/python` 경로가 없거나 실행 권한이 없는지 확인합니다.
 - `status=217/USER`: 서비스의 `User` 계정이 실제로 존재하는지 확인합니다.
 - `.env` 관련 오류: 파일 존재 여부, 소유자와 `600` 권한을 확인합니다.
+- `/desktop_on` 권한 오류: `extensions.access`가 `extensions.system`보다 먼저
+  로드되는지와 `/permission setup` 실행 여부를 확인합니다.
+- 역할 부여 오류: 봇에 역할 관리 권한이 있는지, 봇 역할이 권한 역할보다 위인지 확인합니다.
 - Palworld 명령의 sudo 오류: `/etc/sudoers.d/discord-bot`의 계정과 경로를 확인합니다.
 - 명령 변경이 Discord에 보이지 않음: 봇 로그에서 application command 동기화 오류를 확인합니다.
 

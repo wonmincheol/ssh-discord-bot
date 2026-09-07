@@ -9,6 +9,7 @@ __pycache__/
 secrets/
 *.pem
 *.key
+/data/
 
 # Local development notes, reviews, and generated reports
 /development-logs/
