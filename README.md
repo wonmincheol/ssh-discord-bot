@@ -343,6 +343,8 @@ sudo systemctl restart discord-bot
 - `/desktop_on` 권한 오류: `extensions.access`가 `extensions.system`보다 먼저
   로드되는지와 `/permission setup` 실행 여부를 확인합니다.
 - 역할 부여 오류: 봇에 역할 관리 권한이 있는지, 봇 역할이 권한 역할보다 위인지 확인합니다.
+- `/permission setup` 역할 생성 오류: 명령 실행자의 권한이 아니라 **봇 역할**의
+  `역할 관리(Manage Roles)` 권한을 서버 설정에서 확인합니다.
 - Palworld 명령의 sudo 오류: `/etc/sudoers.d/discord-bot`의 계정과 경로를 확인합니다.
 - 명령 변경이 Discord에 보이지 않음: 봇 로그에서 application command 동기화 오류를 확인합니다.
 

@@ -37,6 +37,7 @@ def install_discord_stub() -> None:
     discord = ModuleType("discord")
     discord.Interaction = object
     discord.Member = object
+    discord.Guild = object
     discord.HTTPException = type("HTTPException", (Exception,), {})
     discord.NotFound = type("NotFound", (Exception,), {})
     discord.Forbidden = type("Forbidden", (Exception,), {})

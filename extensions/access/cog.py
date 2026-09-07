@@ -51,10 +51,26 @@ class PermissionCog(
             return False
         return True
 
+    @staticmethod
+    def _bot_can_manage_roles(guild: discord.Guild) -> bool:
+        bot_member = guild.me
+        return bool(
+            bot_member is not None
+            and bot_member.guild_permissions.manage_roles
+        )
+
     @app_commands.command(name="setup", description="봇 권한 역할을 생성하거나 복구합니다.")
     @app_commands.guild_only()
     async def setup_permissions(self, interaction: discord.Interaction) -> None:
         if not await self._require_admin(interaction):
+            return
+        if not self._bot_can_manage_roles(interaction.guild):
+            await interaction.response.send_message(
+                "❌ 봇 계정에 `역할 관리(Manage Roles)` 권한이 없습니다.\n"
+                "서버 설정 → 역할 → 봇 역할 → 권한에서 `역할 관리`를 켠 뒤 "
+                "다시 실행하세요.",
+                ephemeral=True,
+            )
             return
         await interaction.response.defer(thinking=True, ephemeral=True)
         try:
@@ -65,7 +81,8 @@ class PermissionCog(
             )
         except discord.Forbidden:
             await interaction.followup.send(
-                "❌ 역할을 만들 수 없습니다. 봇의 역할 관리 권한과 역할 순서를 확인하세요.",
+                "❌ Discord가 역할 생성을 거부했습니다. 봇 역할의 `역할 관리` "
+                "권한을 다시 확인하세요.",
                 ephemeral=True,
             )
         except Exception:

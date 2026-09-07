@@ -134,6 +134,7 @@ class PermissionCogTests(unittest.IsolatedAsyncioTestCase):
         self.cog.manager = Mock()
         self.cog.manager.is_configured_guild.return_value = True
         self.cog.manager.is_admin.return_value = True
+        self.cog.manager.setup_roles = AsyncMock()
 
         self.interaction = Mock()
         self.interaction.guild_id = 123
@@ -168,6 +169,22 @@ class PermissionCogTests(unittest.IsolatedAsyncioTestCase):
         message = self.interaction.followup.send.await_args.args[0]
         self.assertIn("admin", message)
         self.assertIn("모든 봇 권한", message)
+
+    async def test_setup_explains_when_bot_lacks_manage_roles(self) -> None:
+        self.interaction.guild.me = SimpleNamespace(
+            guild_permissions=SimpleNamespace(manage_roles=False),
+        )
+
+        await PermissionCog.setup_permissions.callback(
+            self.cog,
+            self.interaction,
+        )
+
+        self.cog.manager.setup_roles.assert_not_awaited()
+        message = self.interaction.response.send_message.await_args.args[0]
+        self.assertIn("봇 계정", message)
+        self.assertIn("Manage Roles", message)
+        self.assertIn("서버 설정", message)
 
     async def test_environment_owner_admin_cannot_be_revoked(self) -> None:
         owner = Mock()
