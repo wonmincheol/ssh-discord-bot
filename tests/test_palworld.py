@@ -1,9 +1,9 @@
 import os
 import sys
 from dataclasses import replace
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from tests.discord_stub import install_discord_stub
 
@@ -19,6 +19,60 @@ install_discord_stub()
 from extensions.palworld.cog import PalworldCog
 from extensions.palworld.service import CommandResult, PalworldService
 from extensions.palworld.settings import PalworldSettings
+from extensions.tarkov.cog import TarkovCog
+from extensions.access.service import ADMIN, MANAGER, DESKTOP_POWER, PermissionManager
+from extensions.access.settings import AccessSettings
+from extensions.access.store import PermissionStore
+
+
+class GameCommandPermissionsTests(unittest.IsolatedAsyncioTestCase):
+    async def test_all_game_commands_use_shared_manager_permission(self):
+        store = PermissionStore(":memory:")
+        self.addCleanup(store.close)
+        manager = PermissionManager(AccessSettings(
+            guild_ids=frozenset({123}), owner_ids=frozenset({1}), database_path=":memory:",
+        ), store)
+        for capability, role_id in [(ADMIN, 10), (MANAGER, 20), (DESKTOP_POWER, 30)]:
+            store.set_role_id(123, capability, role_id)
+        for cog_type, actions in [(PalworldCog, ("start", "stop", "status", "players")),
+                                  (TarkovCog, ("start", "stop", "status"))]:
+            for user_id, role_ids, guild_id, allowed in [
+                (2, [20], 123, True), (2, [10], 123, True), (1, [], 123, True),
+                (2, [], 123, False), (2, [30], 123, False),
+                (2, [20], 999, False), (2, [20], None, False),
+            ]:
+                for action in actions:
+                    with self.subTest(cog=cog_type.__name__, action=action, roles=role_ids, guild=guild_id):
+                        cog = object.__new__(cog_type)
+                        if cog_type is PalworldCog:
+                            result = [] if action == "players" else CommandResult(
+                                0, "STARTED" if action == "start" else "STOPPED", "",
+                            )
+                        else:
+                            result = "STOPPED"
+                        operation = AsyncMock(return_value=result)
+                        cog.service = SimpleNamespace(**{("get_players" if action == "players" else action): operation})
+                        cog._cancel_auto_shutdown = AsyncMock()
+                        cog._start_auto_shutdown = Mock()
+                        interaction = SimpleNamespace(
+                            client=SimpleNamespace(permission_manager=manager), guild_id=guild_id,
+                            user=SimpleNamespace(id=user_id, roles=[SimpleNamespace(id=r) for r in role_ids]),
+                            response=SimpleNamespace(defer=AsyncMock(), send_message=AsyncMock()),
+                            followup=SimpleNamespace(send=AsyncMock()), channel_id=123,
+                        )
+                        kwargs = {"everyone_finished": True} if cog_type is TarkovCog and action == "stop" else {}
+                        await getattr(cog_type, action).callback(cog, interaction, **kwargs)
+                        self.assertEqual(operation.await_count, int(allowed))
+                        if not allowed:
+                            interaction.response.defer.assert_not_awaited()
+                            cog._cancel_auto_shutdown.assert_not_awaited()
+
+    async def test_palworld_fails_closed_when_access_extension_is_missing(self):
+        cog = object.__new__(PalworldCog)
+        interaction = SimpleNamespace(client=SimpleNamespace(), response=SimpleNamespace(send_message=AsyncMock()))
+        for action in ("start", "stop", "status", "players"):
+            await getattr(PalworldCog, action).callback(cog, interaction)
+        self.assertEqual(interaction.response.send_message.await_count, 4)
 
 
 class PalworldSettingsTests(unittest.TestCase):

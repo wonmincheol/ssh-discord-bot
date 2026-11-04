@@ -9,11 +9,13 @@ from .store import PermissionStore
 
 ADMIN = "admin"
 DESKTOP_POWER = "desktop_power"
-CAPABILITIES = (ADMIN, DESKTOP_POWER)
+MANAGER = "manager"
+CAPABILITIES = (ADMIN, DESKTOP_POWER, MANAGER)
 
 ROLE_NAMES = {
     ADMIN: "Bot • Admin",
     DESKTOP_POWER: "Bot • Desktop Power",
+    MANAGER: "Bot • Manager",
 }
 
 
@@ -47,6 +49,13 @@ class PermissionManager:
         admin_role_id = self.store.get_role_id(guild_id, ADMIN)
         if admin_role_id is not None and admin_role_id in role_ids:
             return True
+
+        # Operational commands should require MANAGER. Keep the narrower
+        # desktop role for existing users; managers inherit that capability.
+        if capability in {MANAGER, DESKTOP_POWER}:
+            manager_role_id = self.store.get_role_id(guild_id, MANAGER)
+            if manager_role_id is not None and manager_role_id in role_ids:
+                return True
 
         role_id = self.store.get_role_id(guild_id, capability)
         return role_id is not None and role_id in role_ids

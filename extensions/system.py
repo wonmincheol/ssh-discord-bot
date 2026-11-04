@@ -72,7 +72,7 @@ class SystemCog(commands.Cog):
                 interaction.user.id,
             )
             await interaction.response.send_message(
-                "❌ `/desktop_on` 명령을 사용하려면 `desktop_power` 권한이 필요합니다.",
+                "❌ `/desktop_on` 명령은 `desktop_power`, `manager` 또는 `admin` 권한이 필요합니다.",
                 ephemeral=True,
             )
             return
