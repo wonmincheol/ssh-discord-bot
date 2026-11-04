@@ -29,7 +29,7 @@ DISCORD_TOKEN = _required("DISCORD_TOKEN")
 def _enabled_extensions() -> tuple[str, ...]:
     configured = os.getenv(
         "BOT_EXTENSIONS",
-        "extensions.access,extensions.system,extensions.palworld",
+        "extensions.access,extensions.system,extensions.palworld,extensions.factorio",
     )
     return tuple(name.strip() for name in configured.split(",") if name.strip())
 

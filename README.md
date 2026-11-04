@@ -1,6 +1,6 @@
 # Mini PC Remote Control Discord Bot
 
-Discord 슬래시 명령으로 개인 미니 PC를 원격 관리하는 봇입니다. Palworld와 Tarkov 지원은
+Discord 슬래시 명령으로 개인 미니 PC를 원격 관리하는 봇입니다. Palworld, Tarkov, Factorio 지원은
 코어와 분리된 선택형 확장 모듈로 제공됩니다.
 
 ## Discord 명령어
@@ -10,19 +10,25 @@ Discord 슬래시 명령으로 개인 미니 PC를 원격 관리하는 봇입니
 | 명령 | 설명 |
 | --- | --- |
 | `/ping` | 봇 응답 확인 |
-| `/desktop_on` | Wake on LAN 패킷 전송 (`admin` 또는 `desktop_power` 필요) |
+| `/desktop_on` | Wake on LAN 패킷 전송 (`admin`, `manager` 또는 `desktop_power` 필요) |
+
+Factorio 확장을 활성화했을 때 (별도 봇 권한 없이 서버 멤버 누구나 사용 가능):
+
+| 명령 | 설명 |
+| --- | --- |
+| `/factorio` | 서버 주소, 비밀번호, 게임 버전, 필수 DLC, 모드 동기화 및 접속 방법 확인 |
 
 권한 관리 명령은 `.env` 소유자와 `Bot • Admin` 역할 보유자만 사용할 수 있습니다.
 
 | 명령 | 설명 |
 | --- | --- |
 | `/permission setup` | 봇 권한 역할 생성·복구 |
-| `/permission grant` | 사용자에게 `admin` 또는 `desktop_power` 부여 |
+| `/permission grant` | 사용자에게 `admin`, `manager` 또는 `desktop_power` 부여 |
 | `/permission revoke` | 사용자의 권한 회수 |
 | `/permission show` | 사용자의 봇 권한 확인 |
 | `/permission list` | 사용 가능한 권한과 역할 상태 확인 |
 
-Palworld 확장을 활성화했을 때:
+Palworld 확장을 활성화했을 때 (`manager` 또는 `admin` 필요):
 
 | 명령 | 설명 |
 | --- | --- |
@@ -45,6 +51,7 @@ ssh-discord-bot/
 ├── extensions/
 │   ├── access/                   # Discord 역할 기반 명령 권한 관리
 │   ├── system.py                 # 미니 PC 공통 명령
+│   ├── factorio.py               # Factorio 서버 접속 정보 안내
 │   └── palworld/                 # 제거 가능한 Palworld 확장
 │       ├── cog.py                # Discord 명령 및 자동 종료
 │       ├── service.py            # REST API 및 서버 제어
@@ -182,6 +189,30 @@ Git에 올라가지 않습니다. `.env.example`에는 실제 비밀값을 입�
 
 권한 데이터베이스는 기본적으로 `data/permissions.sqlite3`에 생성됩니다. 역할
 ID만 저장하며 실제 권한 보유자는 Discord 역할로 관리됩니다.
+
+### 공통 운영 권한: manager
+
+`manager`는 게임별 권한을 따로 만들지 않고 운영 기능을 사용할 수 있는 공통
+권한입니다. 새 운영 기능도 이 권한을 사용합니다.
+
+| 권한 | 역할 | 허용 범위 |
+| --- | --- | --- |
+| `admin` | `Bot • Admin` | 모든 기능과 사용자 권한 부여·회수 |
+| `manager` | `Bot • Manager` | Tarkov·Palworld 모든 명령, 데스크탑 켜기 |
+| `desktop_power` | `Bot • Desktop Power` | 데스크탑 켜기만 허용 |
+
+업데이트 후 소유자 또는 기존 봇 관리자가 각 Discord 서버에서 실행합니다.
+
+```text
+/permission setup
+/permission grant user:@사용자 permission:manager
+```
+
+`setup`은 기존 역할과 보유자를 유지하면서 Manager 역할을 추가합니다.
+회수는 `/permission revoke user:@사용자 permission:manager`를 사용합니다.
+기존 `admin` 보유자와 `.env` 소유자는 manager를 별도로 받을 필요가 없습니다.
+Manager는 `/permission` 명령으로 다른 사용자에게 권한을 부여할 수 없습니다.
+기존에 권한 검사 없이 사용 가능했던 Palworld 명령도 이제 운영 권한이 필요합니다.
 
 ### 6. Palworld 제어 sudo 권한 설정
 
@@ -335,6 +366,29 @@ BOT_EXTENSIONS=extensions.access,extensions.system,extensions.palworld
 sudo systemctl restart discord-bot
 ```
 
+## Factorio 접속 정보
+
+`/factorio`는 등록된 서버 접속 정보를 표시합니다. 서버 상태를 조회하거나
+게임 서버를 제어하지 않습니다.
+
+기존 `.env`의 `BOT_EXTENSIONS` 목록에 `extensions.factorio`를 추가하고,
+다음 설정을 넣습니다. 비밀번호는 실제 서버 비밀번호로 바꿉니다.
+
+```dotenv
+FACTORIO_SERVER_ADDRESS=mincheol.duckdns.org:34197
+FACTORIO_SERVER_PASSWORD=replace-with-your-factorio-server-password
+FACTORIO_GAME_VERSION="2.1.24 정식"
+FACTORIO_REQUIRED_DLC="스페이스 에이지"
+```
+
+```bash
+sudo systemctl restart discord-bot
+```
+
+봇이 시작하면서 `/factorio` 명령을 Discord에 동기화합니다. 게임 버전이나
+비밀번호가 바뀌면 `.env`를 수정하고 봇을 재시작하세요. 모드 동기화와
+`멀티플레이 → 주소로 접속` 안내도 함께 표시됩니다.
+
 ## Tarkov SPT + Fika 제어
 
 봇을 **Tarkov 서버와 같은 미니 PC에서 실행**하는 방식입니다. 봇이 SSH에
@@ -347,7 +401,7 @@ sudo systemctl restart discord-bot
 | `/tarkov stop everyone_finished:True` | Ctrl+C 전달 후 세션 종료 대기 |
 | `/tarkov status` | tmux 세션 상태 확인 (게임 접속 가능 여부와는 다름) |
 
-세 명령 모두 허용된 Discord 서버의 `.env` 소유자 또는 `Bot • Admin` 역할이
+세 명령 모두 허용된 Discord 서버의 `.env` 소유자, `Bot • Admin` 또는 `Bot • Manager` 역할이
 필요합니다. 접속자나 레이드 진행 상태는 자동으로 확인하지 않습니다.
 **모두 레이드와 게임을 종료한 뒤** `everyone_finished:True`로 종료를 요청하세요.
 
@@ -392,7 +446,7 @@ sudo visudo -f /etc/sudoers.d/discord-bot-tarkov
 ```sudoers
 discordbot ALL=(your_ssh_user) NOPASSWD: /usr/bin/tmux has-session -t =tarkov
 discordbot ALL=(your_ssh_user) NOPASSWD: /usr/bin/tmux new-session -d -s tarkov -c /data/tarkov /data/tarkov/start-server.sh
-discordbot ALL=(your_ssh_user) NOPASSWD: /usr/bin/tmux send-keys -t =tarkov C-c
+discordbot ALL=(your_ssh_user) NOPASSWD: /usr/bin/tmux send-keys -t =tarkov\: C-c
 discordbot ALL=(your_ssh_user) NOPASSWD: /usr/bin/tmux list-panes -s -t =tarkov -F \#{pane_dead}
 ```
 
@@ -446,6 +500,11 @@ tmux 명령 동작은 [공식 tmux 매뉴얼](https://man.openbsd.org/tmux)을 �
 새 기능은 `extensions/<기능명>/` 패키지 또는 단일 Cog 모듈로 만들고 비동기
 `setup(bot)` 진입점을 제공합니다. 이후 import 경로를 `BOT_EXTENSIONS`에
 추가하면 Discord 연결부를 수정하지 않고 기능을 추가하거나 제거할 수 있습니다.
+
+새 운영 명령은 `extensions.access.checks.require_manager(interaction)`를
+작업 실행 전에 호출하고, 결과가 `False`이면 반환합니다. 공통 `manager`
+권한을 재사용하므로 기능마다 역할을 추가할 필요가 없습니다. 권한 확장이
+로드되지 않았거나 허용된 Discord 서버가 아니면 운영 명령은 차단됩니다.
 
 ## License
 

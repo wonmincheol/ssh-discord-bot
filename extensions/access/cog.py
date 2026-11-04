@@ -13,7 +13,7 @@ from .store import PermissionStore
 
 
 logger = logging.getLogger(__name__)
-PermissionName = Literal["admin", "desktop_power"]
+PermissionName = Literal["admin", "manager", "desktop_power"]
 
 
 class PermissionCog(

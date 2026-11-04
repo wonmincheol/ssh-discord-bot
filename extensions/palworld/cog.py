@@ -9,6 +9,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from extensions.access.checks import require_manager
+
 from .service import CommandResult, PalworldService
 from .settings import PalworldSettings
 
@@ -32,6 +34,8 @@ class PalworldCog(
 
     @app_commands.command(name="status", description="서버 상태를 확인합니다.")
     async def status(self, interaction: discord.Interaction) -> None:
+        if not await require_manager(interaction):
+            return
         await interaction.response.defer(thinking=True)
         try:
             result = await self.service.status()
@@ -48,6 +52,8 @@ class PalworldCog(
 
     @app_commands.command(name="start", description="서버를 실행합니다.")
     async def start(self, interaction: discord.Interaction) -> None:
+        if not await require_manager(interaction):
+            return
         await interaction.response.defer(thinking=True)
         try:
             result = await self.service.start()
@@ -66,6 +72,8 @@ class PalworldCog(
 
     @app_commands.command(name="stop", description="서버를 종료합니다.")
     async def stop(self, interaction: discord.Interaction) -> None:
+        if not await require_manager(interaction):
+            return
         await interaction.response.defer(thinking=True)
         await self._cancel_auto_shutdown()
         try:
@@ -83,6 +91,8 @@ class PalworldCog(
 
     @app_commands.command(name="players", description="접속 중인 플레이어를 확인합니다.")
     async def players(self, interaction: discord.Interaction) -> None:
+        if not await require_manager(interaction):
+            return
         await interaction.response.defer(thinking=True)
         try:
             players = await self.service.get_players()

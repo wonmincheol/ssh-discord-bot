@@ -1,10 +1,12 @@
-"""Administrator-only Discord commands for SPT + Fika."""
+"""Manager-accessible Discord commands for SPT + Fika."""
 
 import logging
 
 import discord
 from discord import app_commands
 from discord.ext import commands
+
+from extensions.access.checks import require_manager
 
 from .service import TarkovService
 from .settings import TarkovSettings
@@ -30,11 +32,7 @@ class TarkovCog(commands.GroupCog, group_name="tarkov", group_description="SPT +
         self.service = TarkovService(TarkovSettings.from_environment())
 
     async def _allowed(self, interaction: discord.Interaction) -> bool:
-        manager = getattr(interaction.client, "permission_manager", None)
-        if manager is not None and manager.has_capability(interaction.user, interaction.guild_id, "admin"):
-            return True
-        await interaction.response.send_message("❌ 봇 관리자 권한이 필요합니다.", ephemeral=True)
-        return False
+        return await require_manager(interaction)
 
     async def _execute(self, interaction: discord.Interaction, action: str) -> None:
         await interaction.response.defer(thinking=True)

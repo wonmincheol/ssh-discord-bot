@@ -90,8 +90,12 @@ class TarkovService:
                 # Mark before sending: if the client times out, delivery may
                 # have succeeded. Never repeat Ctrl+C during a pending shutdown.
                 self._stop_requested = True
-                code, _, error = await self._tmux("send-keys", "-t", "=tarkov", "C-c")
+                # send-keys takes a pane target, so the session needs a colon.
+                code, _, error = await self._tmux("send-keys", "-t", "=tarkov:", "C-c")
                 if code != 0:
+                    # An explicit failure did not deliver the interrupt. Allow
+                    # retry after fixing the target or sudo permissions.
+                    self._stop_requested = False
                     raise RuntimeError(f"tmux stop failed ({code}): {error}")
             deadline = asyncio.get_running_loop().time() + self.settings.stop_timeout
             while await self._exists():

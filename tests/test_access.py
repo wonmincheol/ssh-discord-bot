@@ -9,7 +9,7 @@ from tests.discord_stub import install_discord_stub
 install_discord_stub()
 
 from extensions.access.cog import PermissionCog
-from extensions.access.service import ADMIN, DESKTOP_POWER, PermissionManager
+from extensions.access.service import ADMIN, DESKTOP_POWER, MANAGER, PermissionManager
 from extensions.access.settings import AccessSettings
 from extensions.access.store import PermissionStore
 
@@ -80,13 +80,14 @@ class PermissionManagerTests(unittest.IsolatedAsyncioTestCase):
 
         results = await self.manager.setup_roles(guild)
 
-        self.assertEqual(len(results), 2)
-        self.assertEqual(len(guild.roles), 2)
+        self.assertEqual(len(results), 3)
+        self.assertEqual(len(guild.roles), 3)
         self.assertEqual(self.store.get_role_id(123, ADMIN), 100)
         self.assertEqual(self.store.get_role_id(123, DESKTOP_POWER), 101)
+        self.assertEqual(self.store.get_role_id(123, MANAGER), 102)
 
         second_results = await self.manager.setup_roles(guild)
-        self.assertEqual(len(guild.roles), 2)
+        self.assertEqual(len(guild.roles), 3)
         self.assertTrue(all("준비됨" in result for result in second_results))
 
     def test_environment_owner_has_every_capability(self) -> None:
@@ -94,6 +95,7 @@ class PermissionManagerTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(self.manager.has_capability(owner, 123, ADMIN))
         self.assertTrue(self.manager.has_capability(owner, 123, DESKTOP_POWER))
+        self.assertTrue(self.manager.has_capability(owner, 123, MANAGER))
 
     def test_admin_role_has_every_capability(self) -> None:
         self.store.set_role_id(123, ADMIN, 10)
@@ -101,6 +103,29 @@ class PermissionManagerTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(self.manager.has_capability(admin, 123, ADMIN))
         self.assertTrue(self.manager.has_capability(admin, 123, DESKTOP_POWER))
+        self.assertTrue(self.manager.has_capability(admin, 123, MANAGER))
+
+    def test_manager_can_operate_but_cannot_administer_permissions(self) -> None:
+        self.store.set_role_id(123, MANAGER, 30)
+        member = SimpleNamespace(id=2, roles=[SimpleNamespace(id=30)])
+        self.assertTrue(self.manager.has_capability(member, 123, MANAGER))
+        self.assertTrue(self.manager.has_capability(member, 123, DESKTOP_POWER))
+        self.assertFalse(self.manager.is_admin(member, 123))
+        self.assertFalse(self.manager.has_capability(member, 234, MANAGER))
+        self.assertFalse(self.manager.has_capability(member, None, MANAGER))
+        member.roles = []
+        self.assertFalse(self.manager.has_capability(member, 123, MANAGER))
+
+    async def test_setup_preserves_existing_roles_when_adding_manager(self) -> None:
+        guild = FakeGuild(123)
+        for capability, name in [(ADMIN, "Bot • Admin"), (DESKTOP_POWER, "Bot • Desktop Power")]:
+            role = await guild.create_role(name=name, reason="Existing installation")
+            self.store.set_role_id(123, capability, role.id)
+        original_roles = list(guild.roles)
+        await self.manager.setup_roles(guild)
+        self.assertEqual(guild.roles[:2], original_roles)
+        self.assertEqual(len(guild.roles), 3)
+        self.assertEqual(guild.roles[2].name, "Bot • Manager")
 
     def test_desktop_role_does_not_grant_admin(self) -> None:
         self.store.set_role_id(123, DESKTOP_POWER, 20)
@@ -108,6 +133,7 @@ class PermissionManagerTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(self.manager.has_capability(operator, 123, DESKTOP_POWER))
         self.assertFalse(self.manager.has_capability(operator, 123, ADMIN))
+        self.assertFalse(self.manager.has_capability(operator, 123, MANAGER))
 
     def test_permissions_are_rejected_outside_configured_guild(self) -> None:
         owner = SimpleNamespace(id=1, roles=[])
@@ -169,6 +195,24 @@ class PermissionCogTests(unittest.IsolatedAsyncioTestCase):
         message = self.interaction.followup.send.await_args.args[0]
         self.assertIn("admin", message)
         self.assertIn("모든 봇 권한", message)
+
+    async def test_admin_can_grant_and_revoke_manager(self) -> None:
+        target = Mock(add_roles=AsyncMock(), remove_roles=AsyncMock())
+        role = SimpleNamespace(id=30)
+        self.cog.manager.role_for.return_value = role
+        await PermissionCog.grant.callback(self.cog, self.interaction, target, MANAGER)
+        target.add_roles.assert_awaited_once()
+        await PermissionCog.revoke.callback(self.cog, self.interaction, target, MANAGER)
+        target.remove_roles.assert_awaited_once()
+
+    async def test_non_admin_cannot_grant_or_revoke_roles(self) -> None:
+        self.cog.manager.is_admin.return_value = False
+        target = Mock(add_roles=AsyncMock(), remove_roles=AsyncMock())
+        for permission in (ADMIN, MANAGER):
+            await PermissionCog.grant.callback(self.cog, self.interaction, target, permission)
+            await PermissionCog.revoke.callback(self.cog, self.interaction, target, permission)
+        target.add_roles.assert_not_awaited()
+        target.remove_roles.assert_not_awaited()
 
     async def test_setup_explains_when_bot_lacks_manage_roles(self) -> None:
         self.interaction.guild.me = SimpleNamespace(

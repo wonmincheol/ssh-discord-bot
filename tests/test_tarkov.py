@@ -57,7 +57,7 @@ class TarkovServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self.service.stop(), "STOPPED")
         self.assertFalse(self.service._stop_requested)
         commands = [call.args for call in self.service._tmux.await_args_list]
-        self.assertEqual(commands.count(("send-keys", "-t", "=tarkov", "C-c")), 1)
+        self.assertEqual(commands.count(("send-keys", "-t", "=tarkov:", "C-c")), 1)
         self.assertEqual(commands[-1], ("has-session", "-t", "=tarkov"))
 
     async def test_timeout_never_kills_or_resends_interrupt(self):
@@ -71,6 +71,29 @@ class TarkovServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(commands.count("send-keys"), 1)
         self.assertNotIn("kill-session", commands)
         self.assertNotIn("new-session", commands)
+
+    async def test_rejected_interrupt_can_be_retried(self):
+        self.service._tmux = AsyncMock(side_effect=[
+            (0, "", ""), (0, "0", ""), (1, "", "can't find pane: =tarkov"),
+            (0, "", ""), (0, "0", ""), (0, "", ""),
+            (1, "", "can't find session: tarkov"),
+        ])
+        with self.assertRaises(RuntimeError):
+            await self.service.stop()
+        self.assertFalse(self.service._stop_requested)
+        self.assertEqual(await self.service.stop(), "STOPPED")
+
+    async def test_uncertain_interrupt_delivery_is_not_repeated(self):
+        self.service._tmux = AsyncMock(side_effect=[
+            (0, "", ""), (0, "0", ""), asyncio.TimeoutError,
+            (0, "", ""), (0, "", ""),
+        ])
+        with self.assertRaises(asyncio.TimeoutError):
+            await self.service.stop()
+        self.assertTrue(self.service._stop_requested)
+        self.assertEqual(await self.service.stop(), "STOP_TIMEOUT")
+        commands = [call.args[0] for call in self.service._tmux.await_args_list]
+        self.assertEqual(commands.count("send-keys"), 1)
 
     async def test_stopped_server_and_ambiguous_panes_are_not_interrupted(self):
         self.service._tmux = AsyncMock(return_value=(1, "", "can't find session: tarkov"))
