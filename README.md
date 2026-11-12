@@ -11,6 +11,13 @@ Discord 슬래시 명령으로 개인 미니 PC를 원격 관리하는 봇입니
 | --- | --- |
 | `/ping` | 봇 응답 확인 |
 | `/desktop_on` | Wake on LAN 패킷 전송 (`admin`, `manager` 또는 `desktop_power` 필요) |
+| `/desktop_off confirm:True` | Windows 데스크탑에 정상 종료 요청 (`admin` 또는 `manager` 필요) |
+
+원격 종료는 데스크탑의 OpenSSH와 종료 전용 SYSTEM 작업 설정이 필요합니다.
+[데스크탑 원격 종료 설치·검증 안내](docs/desktop-power.md)를 참고하세요.
+설정 전에도 기존 WOL 및 게임 서버 명령은 사용할 수 있습니다.
+종료 요청에는 `confirm:True`가 필요하며, 앱 강제 종료와 재부팅은 수행하지 않습니다.
+처리 결과를 확인하지 못하면 같은 부팅에서 종료 요청을 다시 전송하지 않습니다.
 
 Factorio 확장을 활성화했을 때 (별도 봇 권한 없이 서버 멤버 누구나 사용 가능):
 
@@ -47,22 +54,31 @@ ssh-discord-bot/
 ├── bot.py                         # Discord 연결 및 확장 로딩
 ├── config.py                      # 봇 공통 설정
 ├── deploy/
-│   └── discord-bot.service       # 저장소에서 관리하는 systemd 원본
+│   ├── discord-bot.service      # 저장소에서 관리하는 systemd 원본
+│   └── windows/                 # 데스크탑 종료 작업·설치 스크립트
+├── docs/
+│   └── desktop-power.md         # 데스크탑 종료 설치·검증 안내
 ├── extensions/
 │   ├── access/                   # Discord 역할 기반 명령 권한 관리
-│   ├── system.py                 # 미니 PC 공통 명령
+│   ├── system.py                 # ping·데스크탑 켜기·종료 명령
+│   ├── desktop/                  # 제한된 SSH 연결·종료 중복 방지
 │   ├── factorio.py               # Factorio 서버 접속 정보 안내
+│   ├── tarkov/                   # Tarkov tmux 제어
 │   └── palworld/                 # 제거 가능한 Palworld 확장
 │       ├── cog.py                # Discord 명령 및 자동 종료
 │       ├── service.py            # REST API 및 서버 제어
 │       ├── settings.py           # Palworld 설정
 │       └── server-control/       # 시작·종료·상태 스크립트
+├── tests/                        # 권한·서비스·Windows 종료 회귀 테스트
 ├── .env.example                  # 공개 가능한 설정 예제
+├── CHANGELOG.md                  # 기능·운영 변경 이력
 └── requirements.txt
 ```
 
 `bot.py`는 Palworld를 직접 참조하지 않습니다. 활성화할 기능은 `.env`의
 `BOT_EXTENSIONS`로 선택합니다.
+명령은 슬래시 명령만 제공하며 별도 접두사 명령이나 기본 도움말 명령은 등록하지
+않습니다. 설치 환경마다 목록을 명시하여 실행 중인 확장을 관리하세요.
 
 ## 미니 PC 설치
 
@@ -198,7 +214,7 @@ ID만 저장하며 실제 권한 보유자는 Discord 역할로 관리됩니다.
 | 권한 | 역할 | 허용 범위 |
 | --- | --- | --- |
 | `admin` | `Bot • Admin` | 모든 기능과 사용자 권한 부여·회수 |
-| `manager` | `Bot • Manager` | Tarkov·Palworld 모든 명령, 데스크탑 켜기 |
+| `manager` | `Bot • Manager` | Tarkov·Palworld 모든 명령, 데스크탑 켜기·종료 |
 | `desktop_power` | `Bot • Desktop Power` | 데스크탑 켜기만 허용 |
 
 업데이트 후 소유자 또는 기존 봇 관리자가 각 Discord 서버에서 실행합니다.
@@ -489,6 +505,8 @@ tmux 명령 동작은 [공식 tmux 매뉴얼](https://man.openbsd.org/tmux)을 �
 - `.env` 관련 오류: 파일 존재 여부, 소유자와 `600` 권한을 확인합니다.
 - `/desktop_on` 권한 오류: `extensions.access`가 `extensions.system`보다 먼저
   로드되는지와 `/permission setup` 실행 여부를 확인합니다.
+- `/desktop_off` 설정·연결 오류: [설치 안내](docs/desktop-power.md)의 읽기 전용
+  점검 명령으로 SSH 키, 호스트 키, Windows 종료 전용 스크립트를 확인합니다.
 - 역할 부여 오류: 봇에 역할 관리 권한이 있는지, 봇 역할이 권한 역할보다 위인지 확인합니다.
 - `/permission setup` 역할 생성 오류: 명령 실행자의 권한이 아니라 **봇 역할**의
   `역할 관리(Manage Roles)` 권한을 서버 설정에서 확인합니다.
@@ -505,6 +523,26 @@ tmux 명령 동작은 [공식 tmux 매뉴얼](https://man.openbsd.org/tmux)을 �
 작업 실행 전에 호출하고, 결과가 `False`이면 반환합니다. 공통 `manager`
 권한을 재사용하므로 기능마다 역할을 추가할 필요가 없습니다. 권한 확장이
 로드되지 않았거나 허용된 Discord 서버가 아니면 운영 명령은 차단됩니다.
+
+## 테스트와 검증
+
+설치한 가상환경에서 회귀 테스트를 실행합니다.
+
+```bash
+/data/ssh-discord-bot/.venv/bin/python -m unittest discover -q
+```
+
+Windows 개발 환경에서는 다음 명령을 사용합니다.
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -q
+```
+
+Windows 전용 테스트는 Windows PowerShell과 .NET Framework C# 컴파일러가
+있는 환경에서 실행되며, 그 외 환경에서는 건너뜁니다. 테스트는 Discord 응답,
+외부 명령과 종료 API 경계를 모의하므로 실제 서버나 데스크탑 전원을 조작하지
+않습니다. 실제 종료·WOL 검증은 [설치 안내](docs/desktop-power.md)의 순서로
+별도 수행합니다. 주요 변경은 [변경 이력](CHANGELOG.md)에서 확인할 수 있습니다.
 
 ## License
 

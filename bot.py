@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 
 class RemoteControlBot(commands.Bot):
     def __init__(self) -> None:
-        super().__init__(command_prefix="!", intents=discord.Intents.default())
+        super().__init__(
+            command_prefix=(), help_command=None, intents=discord.Intents.default(),
+        )
 
     async def setup_hook(self) -> None:
         for extension in EXTENSIONS:
