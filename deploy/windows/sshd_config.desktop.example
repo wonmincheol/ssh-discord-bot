@@ -1,0 +1,10 @@
+# Append to C:\ProgramData\ssh\sshd_config. Account names must be lowercase.
+# Use a dedicated local, non-administrator account named desktopbot.
+# Keep existing global settings above all Match blocks.
+Match User desktopbot
+    AuthenticationMethods publickey
+    PasswordAuthentication no
+    AllowAgentForwarding no
+    AllowTcpForwarding no
+    PermitTTY no
+    ForceCommand C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:/ProgramData/DiscordBot/DesktopPower.ps1
