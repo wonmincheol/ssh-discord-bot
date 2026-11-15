@@ -280,8 +280,10 @@ sudo -u discordbot /data/ssh-discord-bot/.venv/bin/python -m extensions.desktop 
 있으므로 봇을 재시작하면 초기화됩니다. 결과 불명 상태에서 재시작했다면 먼저
 데스크탑 상태를 직접 확인하세요. 읽기 전용 점검은 이 기록을 초기화하지 않습니다.
 
-Discord 응답은 요청자에게만 보이며 SSH 원문, 주소, 계정명, 키 경로는 포함하지
-않습니다. 봇 로그에는 요청자의 Discord ID와 정해진 결과 코드만 기록합니다.
+`/desktop_off confirm:True`의 처리 결과는 채널에 공개되며 자동 삭제하지 않습니다.
+권한 부족과 확인 옵션 생략 안내는 요청자에게만 보입니다. Discord 응답에는 SSH
+원문, 주소, 계정명, 키 경로를 포함하지 않습니다. 봇 로그에는 요청자의 Discord
+ID와 정해진 결과 코드만 기록합니다.
 Windows가 종료를 거부하면 숫자 오류 코드도 기록합니다. SSH 원문이나 Windows
 오류 원문을 Discord로 반환하지 않습니다. 오류 번호를 받기 전에는 권한 부족,
 부팅 상태 변경, 다른 Windows 거부 사유 중 하나로 단정하지 마세요.

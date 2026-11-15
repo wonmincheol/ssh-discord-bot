@@ -130,7 +130,7 @@ class SystemCog(commands.Cog):
                 "`/desktop_off confirm:True`를 실행하세요.", ephemeral=True,
             )
             return
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        await interaction.response.defer(thinking=True, ephemeral=False)
         logger.info("Desktop shutdown requested: guild=%s user=%s", interaction.guild_id, interaction.user.id)
         try:
             result = await self.desktop_service.shutdown()
@@ -139,7 +139,7 @@ class SystemCog(commands.Cog):
             # Exception messages may contain connection details or key paths.
             logger.error("Unexpected desktop shutdown failure; delivery may be uncertain")
             message = DESKTOP_OFF_MESSAGES["UNKNOWN"]
-        await interaction.followup.send(message, ephemeral=True)
+        await interaction.followup.send(message, ephemeral=False)
 
 
 async def setup(bot: commands.Bot) -> None:

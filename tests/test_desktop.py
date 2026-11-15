@@ -208,15 +208,15 @@ class DesktopCommandTests(unittest.IsolatedAsyncioTestCase):
         self.cog.desktop_service.shutdown.assert_not_awaited()
         self.assertTrue(self.interaction.response.send_message.await_args.kwargs["ephemeral"])
 
-    async def test_results_are_private_and_never_claim_power_is_off(self):
+    async def test_results_are_public_and_never_claim_power_is_off(self):
         for result in DESKTOP_OFF_MESSAGES:
             self.cog.desktop_service.shutdown.return_value = result
             await SystemCog.desktop_off.callback(self.cog, self.interaction, confirm=True)
-            self.assertTrue(self.interaction.response.defer.await_args.kwargs["ephemeral"])
+            self.assertFalse(self.interaction.response.defer.await_args.kwargs["ephemeral"])
             message = self.interaction.followup.send.await_args.args[0]
             self.assertEqual(message, DESKTOP_OFF_MESSAGES[result])
             self.assertNotIn("종료되었습니다", message)
-            self.assertTrue(self.interaction.followup.send.await_args.kwargs["ephemeral"])
+            self.assertFalse(self.interaction.followup.send.await_args.kwargs["ephemeral"])
 
     async def test_unexpected_exception_does_not_expose_connection_details(self):
         self.cog.desktop_service.shutdown.side_effect = RuntimeError("private-ip-and-key-path")
