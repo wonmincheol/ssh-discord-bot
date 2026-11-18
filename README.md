@@ -11,10 +11,22 @@ Discord 슬래시 명령으로 개인 미니 PC를 원격 관리하는 봇입니
 | --- | --- |
 | `/ping` | 봇 응답 확인 |
 | `/desktop_on` | Wake on LAN 패킷 전송 (`admin`, `manager` 또는 `desktop_power` 필요) |
+| `/desktop_panel set channel:#PC제어` | 지정한 텍스트 채널에 켜기 버튼 설치 또는 이동 (봇 소유자 전용) |
+| `/desktop_panel remove` | 현재 서버의 켜기 패널 삭제 (봇 소유자 전용) |
 | `/desktop_off confirm:True` | Windows 데스크탑에 정상 종료 요청 (`admin` 또는 `manager` 필요) |
 
+`BOT_OWNER_IDS`에 등록된 소유자는 허용된 서버(`BOT_GUILD_IDS`)마다 켜기 패널을
+하나 설치할 수 있습니다. 봇이 패널을 채널에 고정하며, Discord에서 자동 고정이
+실패하면 명령 응답의 링크를 열어 직접 고정할 수 있습니다. 같은 채널에서 다시
+설치하면 기존 메시지를 갱신하고, 다른 채널을 지정하면 이전 버튼을 비활성화합니다.
+
+패널은 권한 DB에 저장되므로 봇을 재시작해도 사용할 수 있습니다. 버튼을 누르면
+등록된 서버·채널·메시지와 사용자의 켜기 권한을 확인하고, WOL 전송 결과를 누른
+사람에게만 표시합니다. `/desktop_on`은 기존과 같이 허용된 서버의 다른 채널에서도
+사용할 수 있습니다.
+
 원격 종료는 데스크탑의 OpenSSH와 종료 전용 SYSTEM 작업 설정이 필요합니다.
-[데스크탑 원격 종료 설치·검증 안내](docs/desktop-power.md)를 참고하세요.
+[데스크탑 전원 제어 설정과 검증](docs/desktop-power.md)을 참고하세요.
 설정 전에도 기존 WOL 및 게임 서버 명령은 사용할 수 있습니다.
 종료 요청에는 `confirm:True`가 필요하며, 앱 강제 종료와 재부팅은 수행하지 않습니다.
 처리 결과를 확인하지 못하면 같은 부팅에서 종료 요청을 다시 전송하지 않습니다.
@@ -57,7 +69,7 @@ ssh-discord-bot/
 │   ├── discord-bot.service      # 저장소에서 관리하는 systemd 원본
 │   └── windows/                 # 데스크탑 종료 작업·설치 스크립트
 ├── docs/
-│   └── desktop-power.md         # 데스크탑 종료 설치·검증 안내
+│   └── desktop-power.md         # 데스크탑 켜기 패널과 원격 종료 안내
 ├── extensions/
 │   ├── access/                   # Discord 역할 기반 명령 권한 관리
 │   ├── system.py                 # ping·데스크탑 켜기·종료 명령
@@ -178,8 +190,9 @@ PALWORLD_API_PASSWORD=replace-with-your-palworld-admin-password
 모드에서 복사한 숫자 ID를 사용해야 합니다. 기존 단일 `BOT_GUILD_ID` 설정도
 호환되지만 새 설정에서는 `BOT_GUILD_IDS`를 사용하세요.
 
-`WOL_MAC_ADDRESS`는 `/desktop_on`을 사용할 때 필수입니다. 이 값과 외부 명령의
-원문 출력은 Discord 응답에 표시되지 않으며, 실제 주소는 `.env`에만 보관하세요.
+`WOL_MAC_ADDRESS`는 `/desktop_on`과 패널의 **데스크탑 켜기** 버튼에 필요합니다.
+이 값과 외부 명령의 원문 출력은 Discord 응답에 표시되지 않으며, 실제 주소는
+`.env`에만 보관하세요.
 
 `.env`, `.env.*`, 개인 키와 `secrets/` 디렉터리는 `.gitignore`에 포함되어
 Git에 올라가지 않습니다. `.env.example`에는 실제 비밀값을 입력하지 마세요.
@@ -199,12 +212,12 @@ Git에 올라가지 않습니다. `.env.example`에는 실제 비밀값을 입�
 1. `/permission setup`
 2. `/permission grant user:@부계정 permission:admin`
 
-이후 부계정의 `Bot • Admin` 역할이 유지되는 동안 본계정과 동일하게 모든 봇
-명령과 권한 관리 명령을 사용할 수 있습니다. `.env` 소유자 권한은 Discord에서
+이후 부계정의 `Bot • Admin` 역할로 봇 운영과 권한 관리 명령을 사용할 수 있습니다.
+켜기 패널 설치·이동·삭제는 `.env` 소유자만 가능합니다. 소유자 권한은 Discord에서
 회수할 수 없으므로 역할이 삭제되거나 설정이 손상되어도 복구할 수 있습니다.
 
-권한 데이터베이스는 기본적으로 `data/permissions.sqlite3`에 생성됩니다. 역할
-ID만 저장하며 실제 권한 보유자는 Discord 역할로 관리됩니다.
+권한 데이터베이스는 기본적으로 `data/permissions.sqlite3`에 생성됩니다. 서버별
+권한 역할 ID와 켜기 패널의 위치를 저장합니다. 역할의 사용자 배정은 Discord에서 관리합니다.
 
 ### 공통 운영 권한: manager
 
@@ -213,7 +226,7 @@ ID만 저장하며 실제 권한 보유자는 Discord 역할로 관리됩니다.
 
 | 권한 | 역할 | 허용 범위 |
 | --- | --- | --- |
-| `admin` | `Bot • Admin` | 모든 기능과 사용자 권한 부여·회수 |
+| `admin` | `Bot • Admin` | 봇 운영과 사용자 권한 부여·회수 |
 | `manager` | `Bot • Manager` | Tarkov·Palworld 모든 명령, 데스크탑 켜기·종료 |
 | `desktop_power` | `Bot • Desktop Power` | 데스크탑 켜기만 허용 |
 
@@ -511,7 +524,8 @@ tmux 명령 동작은 [공식 tmux 매뉴얼](https://man.openbsd.org/tmux)을 �
 - `/permission setup` 역할 생성 오류: 명령 실행자의 권한이 아니라 **봇 역할**의
   `역할 관리(Manage Roles)` 권한을 서버 설정에서 확인합니다.
 - Palworld 명령의 sudo 오류: `/etc/sudoers.d/discord-bot`의 계정과 경로를 확인합니다.
-- 명령 변경이 Discord에 보이지 않음: 봇 로그에서 application command 동기화 오류를 확인합니다.
+- 새 명령이 Discord에 보이지 않으면 봇 로그에서 명령 동기화를 확인합니다.
+  동기화가 완료됐다면 Discord 앱을 새로고침(PC에서는 `Ctrl+R`)한 뒤 서버의 텍스트 채널에서 다시 검색합니다.
 
 ## 새 기능 확장하기
 

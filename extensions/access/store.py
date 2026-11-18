@@ -1,4 +1,4 @@
-"""Small SQLite store for guild capability-to-role mappings."""
+"""SQLite store for guild role mappings and desktop panel registrations."""
 
 from pathlib import Path
 import sqlite3
@@ -33,6 +33,39 @@ class PermissionStore:
                 )
                 """
             )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS desktop_panels (
+                    guild_id INTEGER PRIMARY KEY,
+                    channel_id INTEGER NOT NULL,
+                    message_id INTEGER NOT NULL
+                )
+                """
+            )
+
+    def get_desktop_panel(self, guild_id: int) -> tuple[int, int] | None:
+        with self._connect() as connection:
+            return connection.execute(
+                "SELECT channel_id, message_id FROM desktop_panels WHERE guild_id = ?",
+                (guild_id,),
+            ).fetchone()
+
+    def set_desktop_panel(self, guild_id: int, channel_id: int, message_id: int) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO desktop_panels (guild_id, channel_id, message_id)
+                VALUES (?, ?, ?)
+                ON CONFLICT(guild_id) DO UPDATE SET
+                    channel_id = excluded.channel_id,
+                    message_id = excluded.message_id
+                """,
+                (guild_id, channel_id, message_id),
+            )
+
+    def remove_desktop_panel(self, guild_id: int) -> None:
+        with self._connect() as connection:
+            connection.execute("DELETE FROM desktop_panels WHERE guild_id = ?", (guild_id,))
 
     def get_role_id(self, guild_id: int, capability: str) -> int | None:
         with self._connect() as connection:
